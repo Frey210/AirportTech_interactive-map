@@ -1,0 +1,27 @@
+{
+  "name": "airport-technology-interactive-map",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b --pretty false",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "konva": "^10.3.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-konva": "^19.2.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "^6.0.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11"
+  }
+}
