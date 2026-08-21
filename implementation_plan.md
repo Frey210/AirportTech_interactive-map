@@ -120,18 +120,18 @@ Frontend boleh dikembangkan memakai fixture setelah kontrak API disepakati, teta
 
 #### Frontend
 
-- [ ] Buat proof-of-concept React + TypeScript + Konva tanpa fitur produksi.
-- [ ] Tampilkan satu gambar dasar dan satu ikon.
-- [ ] Implementasikan pan, zoom, drag, resize, dan rotasi.
-- [ ] Simpan posisi sebagai `x_ratio` dan `y_ratio`.
-- [ ] Buktikan posisi tetap sama pada viewport desktop dan tablet.
-- [ ] Render 500 penanda sintetis dan ukur waktu render/interaksi.
+- [x] Buat proof-of-concept React + TypeScript + Konva tanpa fitur produksi.
+- [x] Tampilkan satu gambar dasar dan satu ikon.
+- [x] Implementasikan pan, zoom, drag, resize, dan rotasi.
+- [x] Simpan posisi sebagai `x_ratio` dan `y_ratio`.
+- [x] Buktikan posisi tetap sama pada viewport desktop dan tablet.
+- [x] Render 500 penanda sintetis dan ukur waktu render/interaksi.
 
 #### Integrasi
 
-- [ ] Buat endpoint sementara/read-only `GET /api/v1/me` atau spike setara.
+- [x] Buat endpoint sementara/read-only `GET /api/v1/me` atau spike setara.
 - [ ] Buktikan request React memakai sesi CodeIgniter pada origin yang sama.
-- [ ] Buktikan request tanpa sesi memperoleh `401`, bukan redirect HTML.
+- [x] Buktikan request tanpa sesi memperoleh `401`, bukan redirect HTML.
 - [ ] Verifikasi operasi tulis API dapat menggunakan perlindungan CSRF.
 
 ### 5.2 Artefak
@@ -144,16 +144,16 @@ Frontend boleh dikembangkan memakai fixture setelah kontrak API disepakati, teta
 
 ### 5.3 Pengujian
 
-- Unit test fungsi normalisasi koordinat.
-- PHPUnit untuk respons sesi valid/tidak valid.
-- Playwright screenshot desktop `1440×900`, tablet `1024×768`, dan mobile `390×844`.
-- Playwright memeriksa console error dan posisi penanda setelah resize.
+- [x] Unit test fungsi normalisasi koordinat.
+- [x] PHPUnit untuk respons sesi valid/tidak valid.
+- [x] Playwright screenshot desktop `1440×900`, tablet `1024×768`, dan mobile `390×844`.
+- [x] Playwright memeriksa console error dan posisi penanda setelah resize.
 
 ### 5.4 Kriteria keluar
 
 - [ ] Same-origin session terbukti bekerja.
-- [ ] Posisi penanda stabil setelah resize dan zoom.
-- [ ] 500 penanda memenuhi target performa awal.
+- [x] Posisi penanda stabil setelah resize dan zoom.
+- [x] 500 penanda memenuhi target performa awal.
 - [ ] Tidak ada keputusan arsitektur kritis yang belum jelas.
 
 ## 6. Tahap 1 — Kontrak API dan desain database
