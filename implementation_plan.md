@@ -44,6 +44,9 @@ Keputusan berikut digunakan sebagai default sampai ada keputusan produk yang ber
 | Status penanda | Menggunakan status peralatan dari API; aturan warna difinalkan saat viewer |
 | Proses maintenance | Panel ringkas dan tautan menuju aplikasi CodeIgniter |
 | Target kapasitas | Maksimal awal 500 penanda per peta |
+| Batas denah awal | Maksimal 12 MiB, 8.192 px per sisi, dan 40 megapiksel |
+| Denah operasional | Gambar lantai penuh menjadi peta utama; varian `PARSIAL` tidak diterbitkan sebagai peta terpisah pada MVP |
+| Optimasi viewer | Simpan metadata dimensi asli; buat turunan viewer/thumbnail dengan rasio sama agar gambar 33 MP tidak dikirim utuh ke perangkat mobile |
 
 ### 2.1 Hasil analisis tambahan 27 Agustus 2026
 
@@ -177,7 +180,7 @@ Frontend boleh dikembangkan memakai fixture setelah kontrak API disepakati, teta
 - [x] Simpan posisi sebagai `x_ratio` dan `y_ratio`.
 - [x] Buktikan posisi tetap sama pada viewport desktop dan tablet.
 - [x] Render 500 penanda sintetis dan ukur waktu render/interaksi.
-- [ ] Uji file gambar landscape, portrait, dan persegi dengan dimensi asli yang berbeda.
+- [x] Uji file gambar landscape nyata `1920×1080` dan `7680×4320`; sampel portrait/persegi belum tersedia dan tetap diuji dengan fixture sintetis saat upload dibuat.
 
 #### Integrasi
 
@@ -225,7 +228,7 @@ Frontend boleh dikembangkan memakai fixture setelah kontrak API disepakati, teta
 - [x] Tetapkan kode error: `UNAUTHENTICATED`, `FORBIDDEN`, `VALIDATION_ERROR`, `NOT_FOUND`, `CONFLICT`, dan `UPLOAD_INVALID`.
 - [x] Tetapkan format tanggal ISO 8601 dan zona waktu.
 - [ ] Tetapkan aturan status warna viewer.
-- [ ] Tetapkan batas upload, misalnya ukuran berkas dan jumlah piksel, berdasarkan data nyata Tahap 0.
+- [x] Tetapkan batas upload awal 12 MiB, 8.192 px per sisi, dan 40 megapiksel berdasarkan sampel denah nyata; tinjau ulang setelah uji memori server.
 
 ### 6.2 Kontrak minimum
 
@@ -376,7 +379,7 @@ Struktur boleh tumbuh saat ada isi. Jangan membuat file kosong atau abstraksi sa
 - [x] Playwright memeriksa sesi valid, sesi berakhir, dan tampilan responsif shell.
 - [x] Feature test memastikan menu peta dan tombol detail menghasilkan URL relatif/same-origin yang benar.
 - [ ] Playwright: scan QR → detail peralatan → Buka di Peta Interaktif → marker terpusat.
-- [ ] Playwright memeriksa state satu peta, beberapa peta, dan belum dipetakan.
+- [x] Playwright memeriksa state satu peta, beberapa peta, dan belum dipetakan.
 - [x] Tidak ada console error atau request gagal yang tidak ditangani.
 
 ### 8.7 Kriteria keluar
@@ -392,8 +395,8 @@ Struktur boleh tumbuh saat ada isi. Jangan membuat file kosong atau abstraksi sa
 ### 9.1 Daftar peta
 
 - [x] Tampilkan daftar peta aktif.
-- [ ] Tampilkan thumbnail, nama, lokasi, label area, dan waktu pembaruan.
-- [ ] Sediakan state loading, kosong, error, dan retry.
+- [x] Tampilkan thumbnail, nama, lokasi, label area, dan waktu pembaruan.
+- [x] Sediakan state loading, kosong, error, dan retry.
 - [x] Buka peta berdasarkan URL yang dapat dibagikan ke pengguna berwenang.
 - [x] Kelompokkan pemilih peta berdasarkan gedung lalu urutan lantai.
 - [x] Pertahankan `peralatan_id`, peta aktif, dan filter penting pada query string.
@@ -403,16 +406,16 @@ Struktur boleh tumbuh saat ada isi. Jangan membuat file kosong atau abstraksi sa
 - [x] Muat gambar dasar sesuai rasio aslinya.
 - [x] Render penanda berdasarkan koordinat ternormalisasi.
 - [x] Implementasikan pan, zoom, reset view, dan fit-to-screen.
-- [ ] Pisahkan layer gambar dasar dan penanda.
-- [ ] Batasi zoom dan pan agar pengguna tidak kehilangan peta.
+- [x] Pisahkan layer gambar dasar dan penanda.
+- [x] Batasi zoom dan pan agar pengguna tidak kehilangan peta.
 - [x] Tampilkan fallback jika gambar atau ikon gagal dimuat.
 
 ### 9.3 Pencarian dan filter
 
 - [x] Cari berdasarkan nama atau kode/scan code.
-- [ ] Filter kategori, fasilitas, lokasi, status, dan user status.
-- [ ] Gunakan sidebar seperti pola situs referensi: pencarian di atas, kelompok tipe peralatan, serta aksi **Pilih semua** dan **Bersihkan** per kelompok.
-- [ ] Gunakan ikon kategori sebagai pemicu filter; data tipe tetap berasal dari `kategori_peralatan`, bukan daftar hardcode frontend.
+- [x] Filter kategori, fasilitas, lokasi melalui pemilih peta, status, dan user status.
+- [x] Gunakan sidebar seperti pola situs referensi: pencarian di atas, kelompok tipe peralatan, serta aksi **Pilih semua** dan **Bersihkan** per kelompok.
+- [x] Gunakan ikon kategori sebagai pemicu filter; data tipe tetap berasal dari `kategori_peralatan`, bukan daftar hardcode frontend.
 - [x] Sorot serta pusatkan penanda hasil.
 - [x] Tampilkan jumlah hasil dan tombol reset.
 - [x] Simpan filter penting pada query string.
@@ -424,7 +427,7 @@ Struktur boleh tumbuh saat ada isi. Jangan membuat file kosong atau abstraksi sa
 - [ ] Tampilkan status dengan teks dan warna/pola.
 - [x] Tautkan ke detail peralatan CodeIgniter.
 - [ ] Tautkan ke maintenance yang sudah ada bila relevan.
-- [ ] Gunakan bottom sheet pada viewport sempit.
+- [x] Gunakan bottom sheet pada viewport sempit.
 
 ### 9.5 Aksesibilitas
 
@@ -439,9 +442,9 @@ Struktur boleh tumbuh saat ada isi. Jangan membuat file kosong atau abstraksi sa
 - [x] Unit test transformasi koordinat dan filter.
 - [ ] Component test state viewer penting.
 - [ ] Playwright: buka peta, cari peralatan, pusatkan penanda, buka detail, ikuti tautan.
-- [ ] Playwright screenshot desktop, tablet, dan mobile.
-- [ ] Playwright memeriksa gambar gagal, respons API kosong, `401`, `403`, dan `500`.
-- [ ] Benchmark viewer dengan 500 penanda.
+- [x] Playwright screenshot desktop, tablet, dan mobile.
+- [x] Playwright memeriksa gambar gagal, respons API kosong, `401`, `403`, dan `500`.
+- [x] Benchmark viewer dengan 500 penanda.
 
 ### 9.7 Kriteria keluar
 
@@ -477,6 +480,7 @@ Pengguna tidak dapat melompat ke editor sebelum gambar tervalidasi. Draft dapat 
 - [ ] Tolak SVG serta tipe lain di luar PNG/JPEG/WebP.
 - [ ] Gunakan nama file acak dan path yang tidak dapat dieksekusi.
 - [ ] Buat thumbnail server-side.
+- [ ] Buat turunan gambar viewer dengan rasio sama dan sisi panjang maksimum awal 4.096 px; koordinat tetap memakai metadata dimensi asli.
 - [ ] Hapus file baru jika transaksi database gagal.
 - [ ] Jangan hapus file yang masih direferensikan.
 - [ ] Jika peta sudah memiliki penanda, penggantian gambar membuat revisi baru dan mewajibkan pemeriksaan ulang posisi; jangan memindahkan marker otomatis.

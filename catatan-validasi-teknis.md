@@ -49,5 +49,15 @@ y_pixel = y_ratio * tinggi_asli
 ## Keputusan yang belum ditutup
 
 - Volume aset final perlu dipastikan pada deployment server.
-- Batas ukuran/dimensi upload ditetapkan setelah menerima contoh denah operasional.
+- Batas awal upload ditetapkan 12 MiB, 8.192 px per sisi, dan 40 megapiksel; perlu dikonfirmasi terhadap memory limit server saat endpoint upload dibuat.
 - Benchmark 500 penanda dicatat pada browser dan perangkat operasional, bukan hanya mesin pengembangan.
+
+## Validasi sampel denah — 28 Agustus 2026
+
+- Ditemukan 32 sampel: 7 PNG `1920×1080` (sekitar 1,8–2,1 MB) dan 25 JPEG `7680×4320` (33,18 MP; terbesar sekitar 8,1 MB).
+- Seluruh sampel saat ini landscape 16:9; viewer tetap mempertahankan dukungan rasio lain melalui koordinat ternormalisasi.
+- File lantai penuh dipakai sebagai peta utama. File bernama `PARSIAL` dipertahankan sebagai referensi lokal, bukan peta terbit terpisah, agar satu peralatan tidak memiliki marker ganda pada lantai yang sama.
+- Gambar 33 MP perlu turunan viewer maksimal awal 4.096 px pada sisi panjang dan thumbnail; dimensi asli serta checksum tetap menjadi sumber koordinat/revisi.
+- Folder `DENAH/` diabaikan Git karena merupakan aset operasional lokal, bukan source code.
+- Playwright memuat langsung sampel `7680×4320` dan `1920×1080`; perpindahan peta, fit-to-screen, marker, dan responsif berjalan tanpa error console atau overflow.
+- Waktu hingga viewer 500 marker siap sekitar 2,04 detik pada mesin pengembangan; denah nyata 33,18 MP sekitar 1,99 detik. Angka ini menjadi baseline, bukan SLA perangkat operasional.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { toPixels, toRatio } from './coordinates'
+import { constrainView, toPixels, toRatio } from './coordinates'
 
 describe('koordinat peta', () => {
   it('tetap sama setelah konversi piksel ke rasio dan kembali ke piksel', () => {
@@ -14,5 +14,9 @@ describe('koordinat peta', () => {
   it('menolak dimensi peta yang tidak valid', () => {
     expect(() => toRatio(1, 1, 0, 720)).toThrow(RangeError)
   })
-})
 
+  it('menjaga sebagian peta tetap terlihat saat digeser', () => {
+    expect(constrainView({ x: -2000, y: 2000, scale: 1 }, { width: 1200, height: 700 }, { width: 900, height: 600 }))
+      .toEqual({ x: -380, y: 80, scale: 1 })
+  })
+})

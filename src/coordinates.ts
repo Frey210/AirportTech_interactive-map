@@ -13,3 +13,16 @@ export const toPixels = ({ xRatio, yRatio }: RatioPoint, width: number, height: 
   y: clamp(yRatio) * height,
 })
 
+export type MapView = { x: number; y: number; scale: number }
+
+export function constrainView(view: MapView, map: { width: number; height: number }, viewport: { width: number; height: number }, margin = 80): MapView {
+  const bound = (position: number, content: number, available: number) => content <= available - margin * 2
+    ? (available - content) / 2
+    : Math.min(margin, Math.max(available - margin - content, position))
+
+  return {
+    ...view,
+    x: bound(view.x, map.width * view.scale, viewport.width),
+    y: bound(view.y, map.height * view.scale, viewport.height),
+  }
+}
