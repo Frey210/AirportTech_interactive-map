@@ -8,8 +8,62 @@ export type Session = {
 
 export type MapResolver = {
   peralatan: { id: number; nama_peralatan: string; is_aktif: boolean }
-  pilihan: Array<{ id: number; nama_peta: string; nama_lantai: string; hubungan: 'penanda' | 'cakupan_lokasi' }>
+  pilihan: Array<MapSummary & { hubungan: 'penanda' | 'cakupan_lokasi'; penanda?: { id: number; x_ratio: number; y_ratio: number } }>
   default_peta_id: number | null
+}
+
+export type MapSummary = {
+  id: number
+  nama_peta: string
+  kode_lantai: string
+  nama_lantai: string
+  urutan_lantai: number
+  revisi: number
+  width_px: number | null
+  height_px: number | null
+  file_url: string | null
+  thumbnail_url: string | null
+  diubah_pada: string | null
+  gedung: { id: number; kode: string; nama: string }
+}
+
+export type MapMarker = {
+  id: number
+  x_ratio: number
+  y_ratio: number
+  size_ratio: number
+  rotation_deg: number
+  z_index: number
+  catatan: string | null
+  lock_version: number
+  ikon: { id: number; nama: string; file_url: string }
+  peralatan: {
+    id: number
+    nama_peralatan: string
+    scan_code: string | null
+    kategori: string | null
+    fasilitas: string | null
+    user_status: string
+    status: string
+    is_aktif: boolean
+    detail_url: string
+  }
+}
+
+export type MapDetail = {
+  peta: MapSummary
+  lokasi: Array<{ id: number; kode: string; nama_lokasi: string }>
+  penanda: MapMarker[]
+}
+
+export function filterMarkers(markers: MapMarker[], filters: { query: string; category: string; facility: string; status: string; userStatus: string }) {
+  const needle = filters.query.trim().toLocaleLowerCase('id')
+  return markers.filter(({ peralatan }) =>
+    (!needle || `${peralatan.nama_peralatan} ${peralatan.scan_code ?? ''}`.toLocaleLowerCase('id').includes(needle))
+    && (!filters.category || peralatan.kategori === filters.category)
+    && (!filters.facility || peralatan.fasilitas === filters.facility)
+    && (!filters.status || peralatan.status === filters.status)
+    && (!filters.userStatus || peralatan.user_status === filters.userStatus))
 }
 
 type Requester = (input: string, init?: RequestInit) => Promise<Response>
@@ -35,3 +89,9 @@ export async function loadBootstrap(search: string, request: Requester = fetch, 
 
   return { session, resolver }
 }
+
+export const loadMaps = (request: Requester = fetch, signal?: AbortSignal) =>
+  getData<MapSummary[]>('/api/v1/peta', request, signal)
+
+export const loadMapDetail = (id: number, request: Requester = fetch, signal?: AbortSignal) =>
+  getData<MapDetail>(`/api/v1/peta/${id}`, request, signal)

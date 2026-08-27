@@ -1,93 +1,81 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Konva from 'konva'
-import { Circle, Group, Image as KonvaImage, Layer, Rect, Stage, Text, Transformer } from 'react-konva'
-import { ForbiddenError, loadBootstrap, SessionExpiredError, type MapResolver, type Session } from './api'
-import { toPixels, toRatio, type RatioPoint } from './coordinates'
+import { Circle, Group, Image as KonvaImage, Layer, Stage, Text } from 'react-konva'
+import {
+  filterMarkers, ForbiddenError, loadBootstrap, loadMapDetail, loadMaps, SessionExpiredError,
+  type MapDetail, type MapMarker, type MapResolver, type MapSummary, type Session,
+} from './api'
 
-const MAP = { width: 1200, height: 720 }
-const MIN_ZOOM = 0.25
+const MIN_ZOOM = 0.2
 const MAX_ZOOM = 4
-
-type Marker = RatioPoint & { size: number; rotation: number }
 type View = { x: number; y: number; scale: number }
 type BootstrapState =
   | { status: 'loading' }
   | { status: 'ready'; session: Session; resolver: MapResolver | null }
-  | { status: 'unauthenticated' }
-  | { status: 'forbidden' }
-  | { status: 'error' }
+  | { status: 'unauthenticated' | 'forbidden' | 'error' }
 
-const initialMarker: Marker = { xRatio: 0.44, yRatio: 0.48, size: 58, rotation: 0 }
-
-function createBlueprint() {
-  const canvas = document.createElement('canvas')
-  canvas.width = MAP.width
-  canvas.height = MAP.height
-  const context = canvas.getContext('2d')!
-  context.fillStyle = '#eaf0f3'
-  context.fillRect(0, 0, MAP.width, MAP.height)
-  context.strokeStyle = '#b8c7ce'
-  context.lineWidth = 1
-  for (let x = 0; x <= MAP.width; x += 40) {
-    context.beginPath(); context.moveTo(x, 0); context.lineTo(x, MAP.height); context.stroke()
-  }
-  for (let y = 0; y <= MAP.height; y += 40) {
-    context.beginPath(); context.moveTo(0, y); context.lineTo(MAP.width, y); context.stroke()
-  }
-  context.strokeStyle = '#526b76'
-  context.lineWidth = 8
-  context.strokeRect(42, 42, 1116, 636)
-  context.lineWidth = 5
-  ;[[80, 90, 430, 230], [510, 90, 610, 230], [80, 370, 330, 260], [450, 370, 300, 260], [790, 370, 330, 260]].forEach(([x, y, w, h]) => context.strokeRect(x, y, w, h))
-  context.fillStyle = '#526b76'
-  context.font = '600 24px system-ui'
-  context.fillText('RUANG SERVER', 110, 135)
-  context.fillText('RUANG OPERASI', 540, 135)
-  context.fillText('WORKSHOP', 110, 415)
-  context.fillText('GUDANG', 480, 415)
-  context.fillText('AREA TEKNISI', 820, 415)
-  return canvas
+function fitView(viewport: { width: number; height: number }, map?: MapSummary): View {
+  if (!map?.width_px || !map.height_px) return { x: 0, y: 0, scale: 1 }
+  const scale = Math.min(viewport.width / map.width_px, viewport.height / map.height_px) * 0.94
+  return { x: (viewport.width - map.width_px * scale) / 2, y: (viewport.height - map.height_px * scale) / 2, scale }
 }
 
-function fitView(width: number, height: number): View {
-  const scale = Math.min(width / MAP.width, height / MAP.height) * 0.94
-  return { x: (width - MAP.width * scale) / 2, y: (height - MAP.height * scale) / 2, scale }
+function useRemoteImage(url: string | null) {
+  const [state, setState] = useState<{ image: HTMLImageElement | null; error: boolean }>({ image: null, error: false })
+  useEffect(() => {
+    if (!url) { setState({ image: null, error: true }); return }
+    setState({ image: null, error: false })
+    const image = new Image()
+    image.onload = () => setState({ image, error: false })
+    image.onerror = () => setState({ image: null, error: true })
+    image.src = url
+    return () => { image.onload = null; image.onerror = null }
+  }, [url])
+  return state
+}
+
+function MarkerNode({ marker, map, selected, onSelect }: { marker: MapMarker; map: MapSummary; selected: boolean; onSelect: () => void }) {
+  const icon = useRemoteImage(marker.ikon.file_url)
+  const size = Math.max(28, marker.size_ratio * Math.min(map.width_px ?? 0, map.height_px ?? 0))
+  return <Group x={marker.x_ratio * (map.width_px ?? 0)} y={marker.y_ratio * (map.height_px ?? 0)} rotation={marker.rotation_deg} onClick={onSelect} onTap={onSelect}>
+    <Circle radius={size * .62} fill={selected ? '#f6a45f' : '#173b51'} stroke="#fff" strokeWidth={selected ? 6 : 3} shadowBlur={selected ? 16 : 7} shadowOpacity={.28} />
+    {icon.image
+      ? <KonvaImage image={icon.image} x={-size / 2} y={-size / 2} width={size} height={size} />
+      : <Text text={marker.peralatan.nama_peralatan.slice(0, 2).toUpperCase()} x={-size / 2} y={-size * .13} width={size} align="center" fill="#fff" fontSize={size * .27} fontStyle="bold" />}
+  </Group>
 }
 
 function StatusScreen({ state, retry }: { state: Exclude<BootstrapState, { status: 'ready' }>; retry: () => void }) {
   const loading = state.status === 'loading'
   const expired = state.status === 'unauthenticated'
   const forbidden = state.status === 'forbidden'
-
-  return (
-    <main className="status-screen" aria-busy={loading}>
-      <section className="status-card" role={loading ? 'status' : 'alert'}>
-        <span className="eyebrow">AIRPORT TECHNOLOGY UPG</span>
-        <h1>{loading ? 'Menyiapkan peta interaktif' : expired ? 'Sesi Anda telah berakhir' : forbidden ? 'Akses peta tidak tersedia' : 'Peta belum dapat dimuat'}</h1>
-        <p>{loading ? 'Memeriksa sesi aplikasi utama.' : expired ? 'Masuk kembali melalui aplikasi Airport Technology.' : forbidden ? 'Akun ini belum memiliki izin untuk membuka peta.' : 'Periksa koneksi ke server, lalu coba lagi.'}</p>
-        {!loading && (expired
-          ? <a className="primary-link" href="/login">Masuk kembali</a>
-          : forbidden
-            ? <a className="primary-link" href="/dashboard">Kembali ke dashboard</a>
-          : <button className="secondary" onClick={retry}>Coba lagi</button>)}
-      </section>
-    </main>
-  )
+  return <main className="status-screen" aria-busy={loading}><section className="status-card" role={loading ? 'status' : 'alert'}>
+    <span className="eyebrow">AIRPORT TECHNOLOGY UPG</span>
+    <h1>{loading ? 'Menyiapkan peta interaktif' : expired ? 'Sesi Anda telah berakhir' : forbidden ? 'Akses peta tidak tersedia' : 'Peta belum dapat dimuat'}</h1>
+    <p>{loading ? 'Memeriksa sesi aplikasi utama.' : expired ? 'Masuk kembali melalui aplikasi Airport Technology.' : forbidden ? 'Akun ini belum memiliki izin untuk membuka peta.' : 'Periksa koneksi ke server, lalu coba lagi.'}</p>
+    {!loading && (expired ? <a className="primary-link" href="/login">Masuk kembali</a> : forbidden ? <a className="primary-link" href="/dashboard">Kembali ke dashboard</a> : <button className="secondary" onClick={retry}>Coba lagi</button>)}
+  </section></main>
 }
 
 function App() {
   const containerRef = useRef<HTMLDivElement>(null)
-  const markerRef = useRef<Konva.Group>(null)
-  const transformerRef = useRef<Konva.Transformer>(null)
-  const [viewport, setViewport] = useState({ width: 900, height: 600 })
-  const [view, setView] = useState<View>(() => fitView(900, 600))
-  const [marker, setMarker] = useState(initialMarker)
-  const [selected, setSelected] = useState(true)
-  const [showLoad, setShowLoad] = useState(false)
-  const [benchmark, setBenchmark] = useState<number | null>(null)
+  const params = useMemo(() => new URLSearchParams(window.location.search), [])
   const [bootstrap, setBootstrap] = useState<BootstrapState>({ status: 'loading' })
   const [retryKey, setRetryKey] = useState(0)
-  const blueprint = useMemo(createBlueprint, [])
+  const [maps, setMaps] = useState<MapSummary[]>([])
+  const [mapsStatus, setMapsStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [activeMapId, setActiveMapId] = useState<number | null>(() => Number(params.get('peta_id')) || null)
+  const [detail, setDetail] = useState<MapDetail | null>(null)
+  const [detailStatus, setDetailStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const [selectedMarkerId, setSelectedMarkerId] = useState<number | null>(null)
+  const [query, setQuery] = useState(params.get('cari') ?? '')
+  const [category, setCategory] = useState(params.get('kategori') ?? '')
+  const [facility, setFacility] = useState(params.get('fasilitas') ?? '')
+  const [status, setStatus] = useState(params.get('status') ?? '')
+  const [userStatus, setUserStatus] = useState(params.get('user_status') ?? '')
+  const [viewport, setViewport] = useState({ width: 900, height: 600 })
+  const [view, setView] = useState<View>({ x: 0, y: 0, scale: 1 })
+  const mapImage = useRemoteImage(detail?.peta.file_url ?? null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -95,171 +83,132 @@ function App() {
     loadBootstrap(window.location.search, fetch, controller.signal)
       .then(({ session, resolver }) => setBootstrap({ status: 'ready', session, resolver }))
       .catch((error: unknown) => {
-        if (controller.signal.aborted) return
-        setBootstrap({ status: error instanceof SessionExpiredError ? 'unauthenticated' : error instanceof ForbiddenError ? 'forbidden' : 'error' })
+        if (!controller.signal.aborted) setBootstrap({ status: error instanceof SessionExpiredError ? 'unauthenticated' : error instanceof ForbiddenError ? 'forbidden' : 'error' })
       })
     return () => controller.abort()
   }, [retryKey])
 
-  const resetView = useCallback(() => setView(fitView(viewport.width, viewport.height)), [viewport])
+  useEffect(() => {
+    if (bootstrap.status !== 'ready') return
+    const controller = new AbortController()
+    setMapsStatus('loading')
+    loadMaps(fetch, controller.signal).then((items) => {
+      setMaps(items); setMapsStatus('ready')
+      setActiveMapId((current) => current ?? bootstrap.resolver?.default_peta_id ?? (bootstrap.resolver && bootstrap.resolver.pilihan.length > 1 ? null : items[0]?.id ?? null))
+    }).catch(() => !controller.signal.aborted && setMapsStatus('error'))
+    return () => controller.abort()
+  }, [bootstrap])
+
+  useEffect(() => {
+    if (activeMapId === null) { setDetail(null); setDetailStatus('idle'); return }
+    const controller = new AbortController()
+    setDetailStatus('loading')
+    loadMapDetail(activeMapId, fetch, controller.signal).then((value) => {
+      setDetail(value); setDetailStatus('ready')
+      const equipmentId = bootstrap.status === 'ready' ? bootstrap.resolver?.peralatan.id : null
+      setSelectedMarkerId(value.penanda.find((marker) => marker.peralatan.id === equipmentId)?.id ?? null)
+    }).catch(() => !controller.signal.aborted && setDetailStatus('error'))
+    return () => controller.abort()
+  }, [activeMapId, bootstrap])
 
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
-    const observer = new ResizeObserver(([entry]) => {
-      const width = Math.max(320, Math.floor(entry.contentRect.width))
-      const height = Math.max(420, Math.floor(entry.contentRect.height))
-      setViewport({ width, height })
-      setView(fitView(width, height))
-    })
+    const observer = new ResizeObserver(([entry]) => setViewport({ width: Math.max(320, Math.floor(entry.contentRect.width)), height: Math.max(420, Math.floor(entry.contentRect.height)) }))
     observer.observe(container)
     return () => observer.disconnect()
   }, [])
+  useEffect(() => setView(fitView(viewport, detail?.peta)), [viewport, detail?.peta])
+  useEffect(() => {
+    const next = new URLSearchParams(window.location.search)
+    activeMapId ? next.set('peta_id', String(activeMapId)) : next.delete('peta_id')
+    query ? next.set('cari', query) : next.delete('cari')
+    category ? next.set('kategori', category) : next.delete('kategori')
+    facility ? next.set('fasilitas', facility) : next.delete('fasilitas')
+    status ? next.set('status', status) : next.delete('status')
+    userStatus ? next.set('user_status', userStatus) : next.delete('user_status')
+    window.history.replaceState(null, '', `${window.location.pathname}${next.size ? `?${next}` : ''}`)
+  }, [activeMapId, query, category, facility, status, userStatus])
+
+  const filteredMarkers = useMemo(() => {
+    return filterMarkers(detail?.penanda ?? [], { query, category, facility, status, userStatus })
+  }, [detail, query, category, facility, status, userStatus])
+  const categories = useMemo(() => [...new Set((detail?.penanda ?? []).map((item) => item.peralatan.kategori).filter(Boolean))] as string[], [detail])
+  const facilities = useMemo(() => [...new Set((detail?.penanda ?? []).map((item) => item.peralatan.fasilitas).filter(Boolean))] as string[], [detail])
+  const statuses = useMemo(() => [...new Set((detail?.penanda ?? []).map((item) => item.peralatan.status).filter(Boolean))] as string[], [detail])
+  const userStatuses = useMemo(() => [...new Set((detail?.penanda ?? []).map((item) => item.peralatan.user_status).filter(Boolean))], [detail])
+  const selectedMarker = detail?.penanda.find((marker) => marker.id === selectedMarkerId) ?? null
+
+  const focusMarker = useCallback((marker: MapMarker) => {
+    if (!detail?.peta.width_px || !detail.peta.height_px) return
+    const scale = Math.min(MAX_ZOOM, Math.max(1, fitView(viewport, detail.peta).scale))
+    setSelectedMarkerId(marker.id)
+    setView({ x: viewport.width / 2 - marker.x_ratio * detail.peta.width_px * scale, y: viewport.height / 2 - marker.y_ratio * detail.peta.height_px * scale, scale })
+  }, [detail, viewport])
 
   useEffect(() => {
-    if (selected && markerRef.current && transformerRef.current) {
-      transformerRef.current.nodes([markerRef.current])
-      transformerRef.current.getLayer()?.batchDraw()
-    }
-  }, [selected])
-
-  const loadMarkers = useMemo(() => Array.from({ length: 500 }, (_, index) => ({
-    x: ((index * 73) % 1160) + 20,
-    y: ((index * 47) % 680) + 20,
-  })), [])
-
-  const toggleLoad = () => {
-    const start = performance.now()
-    setShowLoad((current) => !current)
-    requestAnimationFrame(() => requestAnimationFrame(() => setBenchmark(performance.now() - start)))
-  }
+    if (selectedMarker) focusMarker(selectedMarker)
+  }, [detail?.peta.id]) // Fokus deep-link sekali saat peta berubah.
 
   const handleWheel = (event: Konva.KonvaEventObject<WheelEvent>) => {
     event.evt.preventDefault()
-    const stage = event.target.getStage()
-    const pointer = stage?.getPointerPosition()
-    if (!stage || !pointer) return
-    const oldScale = view.scale
-    const direction = event.evt.deltaY > 0 ? -1 : 1
-    const scale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, oldScale * (direction > 0 ? 1.08 : 1 / 1.08)))
-    const mapPoint = { x: (pointer.x - view.x) / oldScale, y: (pointer.y - view.y) / oldScale }
+    const pointer = event.target.getStage()?.getPointerPosition()
+    if (!pointer) return
+    const scale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, view.scale * (event.evt.deltaY > 0 ? 1 / 1.08 : 1.08)))
+    const mapPoint = { x: (pointer.x - view.x) / view.scale, y: (pointer.y - view.y) / view.scale }
     setView({ x: pointer.x - mapPoint.x * scale, y: pointer.y - mapPoint.y * scale, scale })
   }
 
-  const position = toPixels(marker, MAP.width, MAP.height)
-
-  if (bootstrap.status !== 'ready') {
-    return <StatusScreen state={bootstrap} retry={() => setRetryKey((key) => key + 1)} />
-  }
-
+  if (bootstrap.status !== 'ready') return <StatusScreen state={bootstrap} retry={() => setRetryKey((key) => key + 1)} />
   const { session, resolver } = bootstrap
-
-  return (
-    <main>
-      <header className="topbar">
+  return <main>
+    <header className="topbar"><div><span className="eyebrow">AIRPORT TECHNOLOGY UPG</span><h1>Peta Interaktif</h1></div><span className="status"><i /> {session.nama_lengkap} · {session.role}</span></header>
+    <section className="workspace" aria-label="Viewer peta peralatan">
+      <aside className="sidebar">
         <div>
-          <span className="eyebrow">AIRPORT TECHNOLOGY UPG</span>
-          <h1>Peta Interaktif</h1>
+          <label className="section-label" htmlFor="map-select">Gedung dan lantai</label>
+          <select id="map-select" value={activeMapId ?? ''} onChange={(event) => setActiveMapId(Number(event.target.value) || null)} disabled={mapsStatus !== 'ready' || maps.length === 0}>
+            <option value="">Pilih peta</option>
+            {[...new Set(maps.map((map) => map.gedung.id))].map((buildingId) => { const buildingMaps = maps.filter((map) => map.gedung.id === buildingId); return <optgroup key={buildingId} label={buildingMaps[0].gedung.nama}>{buildingMaps.map((map) => <option key={map.id} value={map.id}>{map.nama_lantai} — {map.nama_peta}</option>)}</optgroup> })}
+          </select>
+          {mapsStatus === 'loading' && <p className="muted" role="status">Memuat daftar peta…</p>}
+          {mapsStatus === 'error' && <p className="error" role="alert">Daftar peta gagal dimuat. Muat ulang halaman untuk mencoba lagi.</p>}
+          {mapsStatus === 'ready' && maps.length === 0 && <p className="empty">Belum ada peta yang diterbitkan.</p>}
         </div>
-        <span className="status"><i /> {session.nama_lengkap} · {session.role}</span>
-      </header>
 
-      <section className="workspace" aria-label="Proof of concept editor peta">
-        <aside className="sidebar">
-          <div>
-            <p className="section-label">Denah aktif</p>
-            <h2>Gedung Operasional</h2>
-            <p className="muted">Lantai 1 · Contoh sintetis tanpa data production</p>
-          </div>
+        {resolver && <div className="resolver-state" role="status"><p className="section-label">Hasil dari detail peralatan</p><strong>{resolver.peralatan.nama_peralatan}</strong>
+          {resolver.pilihan.length === 0 ? <small>Peralatan ini belum ditempatkan pada peta.</small> : resolver.pilihan.length === 1 ? <small>Ditemukan di {resolver.pilihan[0].nama_peta}.</small> : <><small>Pilih salah satu lokasi peralatan:</small><div className="resolver-options">{resolver.pilihan.map((map) => <button key={map.id} onClick={() => setActiveMapId(map.id)} aria-pressed={activeMapId === map.id}>{map.gedung.nama} · {map.nama_lantai}</button>)}</div></>}
+        </div>}
 
-          {resolver && (
-            <div className="resolver-state" role="status">
-              <p className="section-label">Deep-link peralatan</p>
-              <strong>{resolver.peralatan.nama_peralatan}</strong>
-              <small>{resolver.pilihan.length === 0
-                ? 'Belum ditempatkan pada peta.'
-                : resolver.pilihan.length === 1
-                  ? `Ditemukan di ${resolver.pilihan[0].nama_peta}.`
-                  : `${resolver.pilihan.length} peta tersedia; pemilih peta menyusul di tahap viewer.`}</small>
-            </div>
-          )}
+        {detail && <div className="filters">
+          <label htmlFor="equipment-search">Cari peralatan</label><input id="equipment-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nama atau scan code" />
+          <label htmlFor="category-filter">Kategori</label><select id="category-filter" value={category} onChange={(event) => setCategory(event.target.value)}><option value="">Semua kategori</option>{categories.map((item) => <option key={item}>{item}</option>)}</select>
+          <label htmlFor="facility-filter">Fasilitas</label><select id="facility-filter" value={facility} onChange={(event) => setFacility(event.target.value)}><option value="">Semua fasilitas</option>{facilities.map((item) => <option key={item}>{item}</option>)}</select>
+          <label htmlFor="status-filter">Status</label><select id="status-filter" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Semua status</option>{statuses.map((item) => <option key={item}>{item}</option>)}</select>
+          <label htmlFor="user-status-filter">User status</label><select id="user-status-filter" value={userStatus} onChange={(event) => setUserStatus(event.target.value)}><option value="">Semua user status</option>{userStatuses.map((item) => <option key={item}>{item}</option>)}</select>
+          <div className="result-summary" role="status"><span>{filteredMarkers.length} peralatan</span><button onClick={() => { setQuery(''); setCategory(''); setFacility(''); setStatus(''); setUserStatus('') }}>Reset filter</button></div>
+        </div>}
 
-          <div className="equipment-card">
-            <span className="equipment-icon">AT</span>
-            <div><strong>UPS Ruang Server</strong><small>UPS-001 · Normal</small></div>
-          </div>
-
-          <dl className="coordinates">
-            <div><dt>X ratio</dt><dd>{marker.xRatio.toFixed(4)}</dd></div>
-            <div><dt>Y ratio</dt><dd>{marker.yRatio.toFixed(4)}</dd></div>
-            <div><dt>Ukuran</dt><dd>{Math.round(marker.size)} px</dd></div>
-            <div><dt>Rotasi</dt><dd>{Math.round(marker.rotation)}°</dd></div>
-          </dl>
-
-          <div className="instructions">
-            <p className="section-label">Cara mencoba</p>
-            <ul>
-              <li>Geser ikon untuk mengubah posisi.</li>
-              <li>Gunakan handle untuk resize dan rotasi.</li>
-              <li>Scroll untuk zoom; geser area kosong untuk pan.</li>
-            </ul>
-          </div>
-
-          <button className="secondary" onClick={toggleLoad}>{showLoad ? 'Sembunyikan' : 'Uji'} 500 penanda</button>
-          {benchmark !== null && <output>Render terukur: {benchmark.toFixed(1)} ms</output>}
-        </aside>
-
-        <div className="canvas-panel">
-          <div className="canvas-toolbar">
-            <button onClick={() => setView((v) => ({ ...v, scale: Math.min(MAX_ZOOM, v.scale * 1.15) }))} aria-label="Perbesar peta">+</button>
-            <span>{Math.round(view.scale * 100)}%</span>
-            <button onClick={() => setView((v) => ({ ...v, scale: Math.max(MIN_ZOOM, v.scale / 1.15) }))} aria-label="Perkecil peta">−</button>
-            <button className="fit" onClick={resetView}>Pas ke layar</button>
-          </div>
-          <div className="canvas" ref={containerRef}>
-            <Stage
-              width={viewport.width}
-              height={viewport.height}
-              x={view.x}
-              y={view.y}
-              scaleX={view.scale}
-              scaleY={view.scale}
-              draggable
-              onDragEnd={(event) => setView((current) => ({ ...current, x: event.target.x(), y: event.target.y() }))}
-              onWheel={handleWheel}
-              onPointerDown={(event) => event.target === event.target.getStage() && setSelected(false)}
-            >
-              <Layer>
-                <KonvaImage image={blueprint} width={MAP.width} height={MAP.height} shadowBlur={18} shadowOpacity={0.18} />
-                {showLoad && loadMarkers.map((item, index) => <Circle key={index} {...item} radius={5} fill="#d97a34" opacity={0.62} listening={false} />)}
-                <Group
-                  ref={markerRef}
-                  x={position.x}
-                  y={position.y}
-                  rotation={marker.rotation}
-                  draggable
-                  onPointerDown={(event) => { event.cancelBubble = true; setSelected(true) }}
-                  onDragEnd={(event) => setMarker((current) => ({ ...current, ...toRatio(event.target.x(), event.target.y(), MAP.width, MAP.height) }))}
-                  onTransformEnd={() => {
-                    const node = markerRef.current
-                    if (!node) return
-                    const size = Math.max(28, marker.size * Math.max(node.scaleX(), node.scaleY()))
-                    node.scaleX(1); node.scaleY(1)
-                    setMarker((current) => ({ ...current, size, rotation: node.rotation(), ...toRatio(node.x(), node.y(), MAP.width, MAP.height) }))
-                  }}
-                >
-                  <Circle radius={marker.size / 2} fill="#ee7f31" stroke="#fff" strokeWidth={6} shadowBlur={12} shadowOpacity={0.25} />
-                  <Rect x={-marker.size * 0.21} y={-marker.size * 0.17} width={marker.size * 0.42} height={marker.size * 0.34} cornerRadius={4} fill="#173b51" />
-                  <Text text="UPS" width={marker.size} x={-marker.size / 2} y={-5} align="center" fill="#fff" fontSize={marker.size * 0.18} fontStyle="bold" />
-                </Group>
-                {selected && <Transformer ref={transformerRef} rotateEnabled keepRatio enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']} boundBoxFunc={(oldBox, newBox) => newBox.width < 28 ? oldBox : newBox} />}
-              </Layer>
-            </Stage>
-          </div>
+        <div className="marker-list" aria-label="Daftar peralatan pada peta">
+          {filteredMarkers.map((marker) => <button key={marker.id} className={selectedMarkerId === marker.id ? 'active' : ''} onClick={() => focusMarker(marker)} aria-pressed={selectedMarkerId === marker.id}><strong>{marker.peralatan.nama_peralatan}</strong><small>{marker.peralatan.scan_code || 'Tanpa scan code'} · {marker.peralatan.status}</small></button>)}
+          {detail && filteredMarkers.length === 0 && <p className="empty">Tidak ada peralatan yang cocok. Ubah pencarian atau reset filter.</p>}
         </div>
-      </section>
-    </main>
-  )
+
+        {selectedMarker && <article className="equipment-detail"><p className="section-label">Detail terpilih</p><h2>{selectedMarker.peralatan.nama_peralatan}</h2><p>{selectedMarker.peralatan.kategori || 'Tanpa kategori'} · {selectedMarker.peralatan.fasilitas || 'Tanpa fasilitas'}</p><dl><div><dt>Status</dt><dd>{selectedMarker.peralatan.status}</dd></div><div><dt>User status</dt><dd>{selectedMarker.peralatan.user_status}</dd></div></dl><a className="primary-link" href={selectedMarker.peralatan.detail_url}>Buka detail peralatan</a></article>}
+      </aside>
+
+      <div className="canvas-panel"><div className="canvas-toolbar">
+        {detail && <span className="map-title">{detail.peta.gedung.nama} · {detail.peta.nama_lantai}</span>}
+        <button onClick={() => setView((value) => ({ ...value, scale: Math.min(MAX_ZOOM, value.scale * 1.15) }))} aria-label="Perbesar peta">+</button><span>{Math.round(view.scale * 100)}%</span><button onClick={() => setView((value) => ({ ...value, scale: Math.max(MIN_ZOOM, value.scale / 1.15) }))} aria-label="Perkecil peta">−</button><button className="fit" onClick={() => setView(fitView(viewport, detail?.peta))}>Pas ke layar</button>
+      </div><div className="canvas" ref={containerRef} role="img" aria-label={detail ? `Denah ${detail.peta.nama_peta} dengan ${filteredMarkers.length} penanda peralatan` : 'Area denah peta'}>
+        {detailStatus === 'idle' && <div className="canvas-message">Pilih gedung dan lantai untuk membuka denah.</div>}
+        {detailStatus === 'loading' && <div className="canvas-message" role="status">Memuat denah dan penanda…</div>}
+        {detailStatus === 'error' && <div className="canvas-message error" role="alert">Detail peta gagal dimuat. Pilih ulang peta untuk mencoba lagi.</div>}
+        {detailStatus === 'ready' && mapImage.error && <div className="canvas-message error" role="alert">Gambar denah tidak tersedia. Data penanda tetap dapat dibuka dari daftar.</div>}
+        {detail && mapImage.image && <Stage width={viewport.width} height={viewport.height} x={view.x} y={view.y} scaleX={view.scale} scaleY={view.scale} draggable onDragEnd={(event) => setView((value) => ({ ...value, x: event.target.x(), y: event.target.y() }))} onWheel={handleWheel}><Layer><KonvaImage image={mapImage.image} width={detail.peta.width_px ?? mapImage.image.naturalWidth} height={detail.peta.height_px ?? mapImage.image.naturalHeight} shadowBlur={18} shadowOpacity={.18} />{filteredMarkers.map((marker) => <MarkerNode key={marker.id} marker={marker} map={detail.peta} selected={marker.id === selectedMarkerId} onSelect={() => focusMarker(marker)} />)}</Layer></Stage>}
+      </div></div>
+    </section>
+  </main>
 }
 
 export default App

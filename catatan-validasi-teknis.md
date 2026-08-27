@@ -36,6 +36,16 @@ x_pixel = x_ratio * lebar_asli
 y_pixel = y_ratio * tinggi_asli
 ```
 
+## Hasil pemeriksaan viewer M2 — 27 Agustus 2026
+
+- Viewer memuat daftar serta detail peta dari API dan memakai dimensi asli gambar sebagai ruang koordinat.
+- Pemilih peta dikelompokkan per gedung dan lantai; deep-link menangani hasil satu, beberapa, atau tanpa peta.
+- Pencarian nama/scan code dan filter kategori, fasilitas, status, serta user status tersimpan pada query string.
+- Marker dapat dipilih dari kanvas atau daftar keyboard-accessible; pilihan memusatkan marker dan membuka ringkasan peralatan.
+- Vitest: 7 tes lulus; typecheck dan build production lulus.
+- Playwright: desktop `1440x900`, tablet `1024x768`, dan mobile `390x844` tanpa horizontal overflow; happy path terakhir tanpa console error.
+- Build tetap memberi warning chunk utama sekitar 512 kB minified atau 158 kB gzip karena Konva belum dipisahkan dari viewer.
+
 ## Keputusan yang belum ditutup
 
 - Volume aset final perlu dipastikan pada deployment server.

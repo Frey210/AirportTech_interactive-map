@@ -365,8 +365,8 @@ Struktur boleh tumbuh saat ada isi. Jangan membuat file kosong atau abstraksi sa
 - [x] Gunakan URL same-origin `/peta/`; jangan menanam hostname LAN, Tailscale, atau domain publik di view.
 - [x] Tambahkan tombol **Buka di Peta Interaktif** pada `app/Views/peralatan/detail.php` dengan URL `/peta/?peralatan_id={id}`.
 - [x] Pertahankan `ScanController::resolve()` yang sudah mengarahkan QR peralatan ke halaman detail; jangan membuat resolver scan baru.
-- [ ] Saat query `peralatan_id` diterima, viewer memanggil resolver peta, membuka peta yang sesuai, memusatkan marker, dan membuka panel detail.
-- [ ] Tangani tiga hasil resolver: satu peta langsung dibuka, beberapa peta meminta pilihan, dan belum dipetakan menampilkan state kosong yang jelas.
+- [x] Saat query `peralatan_id` diterima, viewer memanggil resolver peta, membuka peta yang sesuai, memusatkan marker, dan membuka panel detail.
+- [x] Tangani tiga hasil resolver: satu peta langsung dibuka, beberapa peta meminta pilihan, dan belum dipetakan menampilkan state kosong yang jelas.
 - [x] Pastikan parameter hanya ID numerik; backend tetap memvalidasi keberadaan dan hak akses peralatan.
 
 ### 8.6 Pengujian
@@ -391,52 +391,52 @@ Struktur boleh tumbuh saat ada isi. Jangan membuat file kosong atau abstraksi sa
 
 ### 9.1 Daftar peta
 
-- [ ] Tampilkan daftar peta aktif.
+- [x] Tampilkan daftar peta aktif.
 - [ ] Tampilkan thumbnail, nama, lokasi, label area, dan waktu pembaruan.
 - [ ] Sediakan state loading, kosong, error, dan retry.
-- [ ] Buka peta berdasarkan URL yang dapat dibagikan ke pengguna berwenang.
-- [ ] Kelompokkan pemilih peta berdasarkan gedung lalu urutan lantai.
-- [ ] Pertahankan `peralatan_id`, peta aktif, dan filter penting pada query string.
+- [x] Buka peta berdasarkan URL yang dapat dibagikan ke pengguna berwenang.
+- [x] Kelompokkan pemilih peta berdasarkan gedung lalu urutan lantai.
+- [x] Pertahankan `peralatan_id`, peta aktif, dan filter penting pada query string.
 
 ### 9.2 Kanvas viewer
 
-- [ ] Muat gambar dasar sesuai rasio aslinya.
-- [ ] Render penanda berdasarkan koordinat ternormalisasi.
-- [ ] Implementasikan pan, zoom, reset view, dan fit-to-screen.
+- [x] Muat gambar dasar sesuai rasio aslinya.
+- [x] Render penanda berdasarkan koordinat ternormalisasi.
+- [x] Implementasikan pan, zoom, reset view, dan fit-to-screen.
 - [ ] Pisahkan layer gambar dasar dan penanda.
 - [ ] Batasi zoom dan pan agar pengguna tidak kehilangan peta.
-- [ ] Tampilkan fallback jika gambar atau ikon gagal dimuat.
+- [x] Tampilkan fallback jika gambar atau ikon gagal dimuat.
 
 ### 9.3 Pencarian dan filter
 
-- [ ] Cari berdasarkan nama atau kode/scan code.
+- [x] Cari berdasarkan nama atau kode/scan code.
 - [ ] Filter kategori, fasilitas, lokasi, status, dan user status.
 - [ ] Gunakan sidebar seperti pola situs referensi: pencarian di atas, kelompok tipe peralatan, serta aksi **Pilih semua** dan **Bersihkan** per kelompok.
 - [ ] Gunakan ikon kategori sebagai pemicu filter; data tipe tetap berasal dari `kategori_peralatan`, bukan daftar hardcode frontend.
-- [ ] Sorot serta pusatkan penanda hasil.
-- [ ] Tampilkan jumlah hasil dan tombol reset.
-- [ ] Simpan filter penting pada query string.
+- [x] Sorot serta pusatkan penanda hasil.
+- [x] Tampilkan jumlah hasil dan tombol reset.
+- [x] Simpan filter penting pada query string.
 
 ### 9.4 Panel detail
 
-- [ ] Tampilkan ringkasan peralatan dari API.
+- [x] Tampilkan ringkasan peralatan dari API.
 - [ ] Tampilkan foto utama bila tersedia.
 - [ ] Tampilkan status dengan teks dan warna/pola.
-- [ ] Tautkan ke detail peralatan CodeIgniter.
+- [x] Tautkan ke detail peralatan CodeIgniter.
 - [ ] Tautkan ke maintenance yang sudah ada bila relevan.
 - [ ] Gunakan bottom sheet pada viewport sempit.
 
 ### 9.5 Aksesibilitas
 
-- [ ] Daftar hasil dapat digunakan tanpa kanvas.
-- [ ] Pemilihan dari daftar memusatkan penanda.
-- [ ] Kontrol memiliki accessible name dan fokus terlihat.
-- [ ] Status tidak dibedakan hanya dengan warna.
-- [ ] Keyboard dapat membuka detail penanda.
+- [x] Daftar hasil dapat digunakan tanpa kanvas.
+- [x] Pemilihan dari daftar memusatkan penanda.
+- [x] Kontrol memiliki accessible name dan fokus terlihat.
+- [x] Status tidak dibedakan hanya dengan warna.
+- [x] Keyboard dapat membuka detail penanda.
 
 ### 9.6 Pengujian
 
-- [ ] Unit test transformasi koordinat dan filter.
+- [x] Unit test transformasi koordinat dan filter.
 - [ ] Component test state viewer penting.
 - [ ] Playwright: buka peta, cari peralatan, pusatkan penanda, buka detail, ikuti tautan.
 - [ ] Playwright screenshot desktop, tablet, dan mobile.
@@ -445,9 +445,9 @@ Struktur boleh tumbuh saat ada isi. Jangan membuat file kosong atau abstraksi sa
 
 ### 9.7 Kriteria keluar
 
-- [ ] Pengguna dapat menemukan satu peralatan dalam maksimal tiga interaksi.
-- [ ] Viewer berfungsi pada desktop, tablet, dan mode dasar mobile.
-- [ ] Data status berasal dari backend dan tidak diduplikasi di frontend.
+- [x] Pengguna dapat menemukan satu peralatan dalam maksimal tiga interaksi.
+- [x] Viewer berfungsi pada desktop, tablet, dan mode dasar mobile.
+- [x] Data status berasal dari backend dan tidak diduplikasi di frontend.
 - [ ] Viewer dapat dirilis read-only jika editor belum selesai.
 
 ## 10. Tahap 5 — Wizard wilayah, peta, dan aset
