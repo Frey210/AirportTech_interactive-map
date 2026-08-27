@@ -18,6 +18,15 @@
 
 Graphify pada aplikasi sumber menunjukkan integrasi sesi berpusat pada `AuthFilter`, `RoleFilter`, dan `BaseController`. Spike `/api/v1/me` berikutnya harus mengembalikan JSON `401` untuk request API, bukan redirect halaman login.
 
+## Hasil pemeriksaan 27 Agustus 2026
+
+- `GET /api/v1/me` sudah tersedia dan shell React memakainya dengan cookie same-origin.
+- API read-only daftar/detail peta dan resolver peralatan sudah tersedia serta dilindungi filter `auth`.
+- PHPUnit fokus: 7 tes dan 19 assertion lulus; warning hanya karena driver code coverage tidak terpasang.
+- Vitest: 5 tes lulus; typecheck dan build production lulus.
+- Playwright memverifikasi sesi valid, deep-link peralatan, sesi `401`, desktop `1440x900`, dan mobile `390x844` tanpa console error atau horizontal overflow.
+- Bundle JavaScript sekitar 508 kB minified atau 157 kB gzip; pemisahan bundle Konva ditunda sampai shell viewer/editor dipisahkan menjadi route nyata.
+
 ## Rumus koordinat
 
 ```text
@@ -29,7 +38,6 @@ y_pixel = y_ratio * tinggi_asli
 
 ## Keputusan yang belum ditutup
 
-- Payload nyata `GET /api/v1/me` menunggu endpoint spike pada CodeIgniter.
 - Volume aset final perlu dipastikan pada deployment server.
 - Batas ukuran/dimensi upload ditetapkan setelah menerima contoh denah operasional.
 - Benchmark 500 penanda dicatat pada browser dan perangkat operasional, bukan hanya mesin pengembangan.

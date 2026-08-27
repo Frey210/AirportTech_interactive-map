@@ -214,16 +214,16 @@ Frontend boleh dikembangkan memakai fixture setelah kontrak API disepakati, teta
 
 ### 6.1 Pekerjaan
 
-- [ ] Finalisasi nama tabel dan kolom sesuai konvensi aplikasi.
-- [ ] Tetapkan `peta` sebagai satu record gedung-lantai dengan `gedung_id`, `kode_lantai`, `nama_lantai`, `urutan_lantai`, `status`, serta metadata gambar.
-- [ ] Tetapkan `peta_lokasi` sebagai relasi cakupan sublokasi/ruangan pada satu peta lantai.
-- [ ] Simpan `width_px`, `height_px`, `mime_type`, ukuran byte, checksum, dan revisi gambar sebagai metadata yang dibaca server, bukan input manual pengguna.
-- [ ] Tetapkan status minimum `draft`, `siap_diedit`, `terbit`, dan `arsip` agar peta yang belum selesai tidak terlihat bagi pengguna umum.
-- [ ] Buat dokumen kontrak endpoint dan contoh JSON sukses/error.
-- [ ] Tentukan pagination, filter, sorting, dan batas maksimum hasil.
-- [ ] Tentukan representasi capability dari `/api/v1/me`.
-- [ ] Tetapkan kode error: `UNAUTHENTICATED`, `FORBIDDEN`, `VALIDATION_ERROR`, `NOT_FOUND`, `CONFLICT`, dan `UPLOAD_INVALID`.
-- [ ] Tetapkan format tanggal ISO 8601 dan zona waktu.
+- [x] Finalisasi nama tabel dan kolom sesuai konvensi aplikasi.
+- [x] Tetapkan `peta` sebagai satu record gedung-lantai dengan `gedung_id`, `kode_lantai`, `nama_lantai`, `urutan_lantai`, `status`, serta metadata gambar.
+- [x] Tetapkan `peta_lokasi` sebagai relasi cakupan sublokasi/ruangan pada satu peta lantai.
+- [x] Simpan `width_px`, `height_px`, `mime_type`, ukuran byte, checksum, dan revisi gambar sebagai metadata yang dibaca server, bukan input manual pengguna.
+- [x] Tetapkan status minimum `draft`, `siap_diedit`, `terbit`, dan `arsip` agar peta yang belum selesai tidak terlihat bagi pengguna umum.
+- [x] Buat dokumen kontrak endpoint dan contoh JSON sukses/error.
+- [x] Tentukan pagination, filter, sorting, dan batas maksimum hasil.
+- [x] Tentukan representasi capability dari `/api/v1/me`.
+- [x] Tetapkan kode error: `UNAUTHENTICATED`, `FORBIDDEN`, `VALIDATION_ERROR`, `NOT_FOUND`, `CONFLICT`, dan `UPLOAD_INVALID`.
+- [x] Tetapkan format tanggal ISO 8601 dan zona waktu.
 - [ ] Tetapkan aturan status warna viewer.
 - [ ] Tetapkan batas upload, misalnya ukuran berkas dan jumlah piksel, berdasarkan data nyata Tahap 0.
 
@@ -256,60 +256,60 @@ Endpoint tulis didefinisikan sekarang tetapi diterapkan setelah jalur read-only 
 
 ### 7.1 Migration database
 
-- [ ] Buat tabel `peta`.
-- [ ] Buat tabel penghubung `peta_lokasi` untuk cakupan sublokasi/ruangan.
-- [ ] Buat tabel `ikon_peta`.
-- [ ] Buat tabel `penanda_peta_peralatan`.
-- [ ] Tambahkan foreign key ke `lokasi`, `kategori_peralatan`, `peralatan`, dan `pengguna` sesuai kebutuhan.
+- [x] Buat tabel `peta`.
+- [x] Buat tabel penghubung `peta_lokasi` untuk cakupan sublokasi/ruangan.
+- [x] Buat tabel `ikon_peta`.
+- [x] Buat tabel `penanda_peta_peralatan`.
+- [x] Tambahkan foreign key ke `lokasi`, `kategori_peralatan`, `peralatan`, dan `pengguna` sesuai kebutuhan.
 - [ ] Validasi di service bahwa `peta.gedung_id` menunjuk lokasi level `GEDUNG` dan setiap `peta_lokasi.lokasi_id` menunjuk `SUBLOKASI` dari gedung yang sama.
-- [ ] Tambahkan constraint status peta dan metadata gambar wajib sebelum status dapat menjadi `siap_diedit` atau `terbit`.
-- [ ] Tambahkan check constraint koordinat `0..1` jika didukung pola migration proyek.
-- [ ] Tambahkan unique constraint `peta_id + peralatan_id`.
-- [ ] Tambahkan unique constraint identitas revisi gedung-lantai dan cegah lebih dari satu peta `terbit` untuk gedung-lantai yang sama.
-- [ ] Tambahkan index pada foreign key dan field filter.
-- [ ] Pastikan `down()` aman untuk lingkungan pengembangan; produksi tidak mengandalkan rollback migration destruktif.
+- [x] Tambahkan constraint status peta dan metadata gambar wajib sebelum status dapat menjadi `siap_diedit` atau `terbit`.
+- [x] Tambahkan check constraint koordinat `0..1` jika didukung pola migration proyek.
+- [x] Tambahkan unique constraint `peta_id + peralatan_id`.
+- [x] Tambahkan unique constraint identitas revisi gedung-lantai dan cegah lebih dari satu peta `terbit` untuk gedung-lantai yang sama.
+- [x] Tambahkan index pada foreign key dan field filter.
+- [x] Pastikan `down()` aman untuk lingkungan pengembangan; produksi tidak mengandalkan rollback migration destruktif.
 
 ### 7.2 Model dan service
 
-- [ ] Tambahkan `PetaModel`, `IkonPetaModel`, dan `PenandaPetaPeralatanModel`.
-- [ ] Buat satu `PetaService` untuk orkestrasi use case peta.
-- [ ] Gunakan `PeralatanService`/model yang ada untuk data peralatan; jangan menyalin query bisnis tanpa alasan.
-- [ ] Buat query detail peta yang mengembalikan metadata, penanda, dan ringkasan peralatan secara efisien.
-- [ ] Buat resolver peralatan-ke-peta untuk deep-link dari halaman detail dan hasil scan QR.
+- [x] Tambahkan `PetaModel`, `IkonPetaModel`, dan `PenandaPetaPeralatanModel`.
+- [x] Buat satu `PetaService` untuk orkestrasi use case peta.
+- [x] Gunakan `PeralatanService`/model yang ada untuk data peralatan; jangan menyalin query bisnis tanpa alasan.
+- [x] Buat query detail peta yang mengembalikan metadata, penanda, dan ringkasan peralatan secara efisien.
+- [x] Buat resolver peralatan-ke-peta untuk deep-link dari halaman detail dan hasil scan QR.
 - [ ] Pastikan peralatan nonaktif/relasi rusak ditandai tanpa menggagalkan seluruh respons.
 
 ### 7.3 Controller dan route API
 
-- [ ] Tambahkan route group `/api/v1`.
-- [ ] Gunakan controller API terpisah dari controller HTML.
-- [ ] Terapkan `auth` pada semua endpoint peta.
-- [ ] Kembalikan JSON `401/403`, bukan halaman login.
-- [ ] Implementasikan endpoint read-only minimum dari Tahap 1.
+- [x] Tambahkan route group `/api/v1`.
+- [x] Gunakan controller API terpisah dari controller HTML.
+- [x] Terapkan `auth` pada semua endpoint peta.
+- [x] Kembalikan JSON `401/403`, bukan halaman login.
+- [x] Implementasikan endpoint read-only minimum dari Tahap 1.
 - [ ] Tambahkan pagination dan whitelist filter untuk endpoint peralatan.
 
 ### 7.4 Seed data pengembangan
 
-- [ ] Buat satu denah fixture kecil atau seeder khusus environment test.
+- [x] Buat satu denah fixture kecil atau seeder khusus environment test.
 - [ ] Gunakan peralatan hasil seeder yang sudah ada.
-- [ ] Jangan memasukkan gambar operasional, dump database, atau data sensitif ke repository.
+- [x] Jangan memasukkan gambar operasional, dump database, atau data sensitif ke repository.
 
 ### 7.5 Pengujian
 
 - [ ] Migration test: tabel, constraint, dan index terbentuk.
 - [ ] Database test: cakupan `peta_lokasi` hanya menerima sublokasi dari gedung peta.
 - [ ] Database test: metadata dimensi/checksum dan status peta mengikuti urutan setup.
-- [ ] Feature test: pengguna tanpa sesi memperoleh `401`.
-- [ ] Feature test: semua role dapat membaca endpoint yang diizinkan.
-- [ ] Database test: daftar/detail peta memuat relasi peralatan yang benar.
+- [x] Feature test: pengguna tanpa sesi memperoleh `401`.
+- [x] Feature test: semua role dapat membaca endpoint yang diizinkan.
+- [x] Database test: daftar/detail peta memuat relasi peralatan yang benar.
 - [ ] Feature test: filter dan pagination peralatan.
 - [ ] Test untuk penanda yang peralatannya nonaktif atau tidak konsisten.
 
 ### 7.6 Kriteria keluar
 
-- [ ] Migration berjalan pada database kosong dan salinan skema pengembangan.
-- [ ] API read-only lulus seluruh PHPUnit terkait.
-- [ ] Tidak ada query N+1 pada detail peta.
-- [ ] API siap digunakan frontend tanpa mock.
+- [x] Migration berjalan pada database kosong melalui database SQLite pengujian.
+- [x] API read-only lulus seluruh PHPUnit terkait.
+- [x] Tidak ada query N+1 pada detail peta.
+- [x] API siap digunakan frontend tanpa mock.
 
 ## 8. Tahap 3 — Fondasi frontend React
 
@@ -353,31 +353,31 @@ Struktur boleh tumbuh saat ada isi. Jangan membuat file kosong atau abstraksi sa
 
 ### 8.4 Shell aplikasi
 
-- [ ] Implementasikan bootstrap sesi melalui `/api/v1/me`.
-- [ ] Tampilkan loading awal, akses ditolak, sesi berakhir, dan error jaringan.
-- [ ] Buat header, area navigasi, serta container responsif.
+- [x] Implementasikan bootstrap sesi melalui `/api/v1/me`.
+- [x] Tampilkan loading awal, akses ditolak, sesi berakhir, dan error jaringan.
+- [x] Buat header, area navigasi, serta container responsif.
 - [ ] Buat error boundary pada batas halaman utama.
 - [ ] Gunakan capability dari API untuk menampilkan kontrol editor.
 
 ### 8.5 Navigasi dan deep-link CodeIgniter
 
-- [ ] Tambahkan menu utama **Peta Interaktif** pada `app/Views/layouts/main.php` untuk semua role yang sudah login.
-- [ ] Gunakan URL same-origin `/peta/`; jangan menanam hostname LAN, Tailscale, atau domain publik di view.
-- [ ] Tambahkan tombol **Buka di Peta Interaktif** pada `app/Views/peralatan/detail.php` dengan URL `/peta/?peralatan_id={id}`.
-- [ ] Pertahankan `ScanController::resolve()` yang sudah mengarahkan QR peralatan ke halaman detail; jangan membuat resolver scan baru.
+- [x] Tambahkan menu utama **Peta Interaktif** pada `app/Views/layouts/main.php` untuk semua role yang sudah login.
+- [x] Gunakan URL same-origin `/peta/`; jangan menanam hostname LAN, Tailscale, atau domain publik di view.
+- [x] Tambahkan tombol **Buka di Peta Interaktif** pada `app/Views/peralatan/detail.php` dengan URL `/peta/?peralatan_id={id}`.
+- [x] Pertahankan `ScanController::resolve()` yang sudah mengarahkan QR peralatan ke halaman detail; jangan membuat resolver scan baru.
 - [ ] Saat query `peralatan_id` diterima, viewer memanggil resolver peta, membuka peta yang sesuai, memusatkan marker, dan membuka panel detail.
 - [ ] Tangani tiga hasil resolver: satu peta langsung dibuka, beberapa peta meminta pilihan, dan belum dipetakan menampilkan state kosong yang jelas.
-- [ ] Pastikan parameter hanya ID numerik; backend tetap memvalidasi keberadaan dan hak akses peralatan.
+- [x] Pastikan parameter hanya ID numerik; backend tetap memvalidasi keberadaan dan hak akses peralatan.
 
 ### 8.6 Pengujian
 
-- [ ] Unit test pemetaan respons API dan error.
+- [x] Unit test pemetaan respons API dan error.
 - [ ] Build produksi berhasil tanpa warning penting.
-- [ ] Playwright memeriksa sesi valid, sesi berakhir, dan tampilan responsif shell.
-- [ ] Feature test memastikan menu peta dan tombol detail menghasilkan URL relatif/same-origin yang benar.
+- [x] Playwright memeriksa sesi valid, sesi berakhir, dan tampilan responsif shell.
+- [x] Feature test memastikan menu peta dan tombol detail menghasilkan URL relatif/same-origin yang benar.
 - [ ] Playwright: scan QR → detail peralatan → Buka di Peta Interaktif → marker terpusat.
 - [ ] Playwright memeriksa state satu peta, beberapa peta, dan belum dipetakan.
-- [ ] Tidak ada console error atau request gagal yang tidak ditangani.
+- [x] Tidak ada console error atau request gagal yang tidak ditangani.
 
 ### 8.7 Kriteria keluar
 

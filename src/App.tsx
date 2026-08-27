@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Konva from 'konva'
 import { Circle, Group, Image as KonvaImage, Layer, Rect, Stage, Text, Transformer } from 'react-konva'
+import { ForbiddenError, loadBootstrap, SessionExpiredError, type MapResolver, type Session } from './api'
 import { toPixels, toRatio, type RatioPoint } from './coordinates'
 
 const MAP = { width: 1200, height: 720 }
@@ -9,6 +10,12 @@ const MAX_ZOOM = 4
 
 type Marker = RatioPoint & { size: number; rotation: number }
 type View = { x: number; y: number; scale: number }
+type BootstrapState =
+  | { status: 'loading' }
+  | { status: 'ready'; session: Session; resolver: MapResolver | null }
+  | { status: 'unauthenticated' }
+  | { status: 'forbidden' }
+  | { status: 'error' }
 
 const initialMarker: Marker = { xRatio: 0.44, yRatio: 0.48, size: 58, rotation: 0 }
 
@@ -47,6 +54,27 @@ function fitView(width: number, height: number): View {
   return { x: (width - MAP.width * scale) / 2, y: (height - MAP.height * scale) / 2, scale }
 }
 
+function StatusScreen({ state, retry }: { state: Exclude<BootstrapState, { status: 'ready' }>; retry: () => void }) {
+  const loading = state.status === 'loading'
+  const expired = state.status === 'unauthenticated'
+  const forbidden = state.status === 'forbidden'
+
+  return (
+    <main className="status-screen" aria-busy={loading}>
+      <section className="status-card" role={loading ? 'status' : 'alert'}>
+        <span className="eyebrow">AIRPORT TECHNOLOGY UPG</span>
+        <h1>{loading ? 'Menyiapkan peta interaktif' : expired ? 'Sesi Anda telah berakhir' : forbidden ? 'Akses peta tidak tersedia' : 'Peta belum dapat dimuat'}</h1>
+        <p>{loading ? 'Memeriksa sesi aplikasi utama.' : expired ? 'Masuk kembali melalui aplikasi Airport Technology.' : forbidden ? 'Akun ini belum memiliki izin untuk membuka peta.' : 'Periksa koneksi ke server, lalu coba lagi.'}</p>
+        {!loading && (expired
+          ? <a className="primary-link" href="/login">Masuk kembali</a>
+          : forbidden
+            ? <a className="primary-link" href="/dashboard">Kembali ke dashboard</a>
+          : <button className="secondary" onClick={retry}>Coba lagi</button>)}
+      </section>
+    </main>
+  )
+}
+
 function App() {
   const containerRef = useRef<HTMLDivElement>(null)
   const markerRef = useRef<Konva.Group>(null)
@@ -57,7 +85,21 @@ function App() {
   const [selected, setSelected] = useState(true)
   const [showLoad, setShowLoad] = useState(false)
   const [benchmark, setBenchmark] = useState<number | null>(null)
+  const [bootstrap, setBootstrap] = useState<BootstrapState>({ status: 'loading' })
+  const [retryKey, setRetryKey] = useState(0)
   const blueprint = useMemo(createBlueprint, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    setBootstrap({ status: 'loading' })
+    loadBootstrap(window.location.search, fetch, controller.signal)
+      .then(({ session, resolver }) => setBootstrap({ status: 'ready', session, resolver }))
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return
+        setBootstrap({ status: error instanceof SessionExpiredError ? 'unauthenticated' : error instanceof ForbiddenError ? 'forbidden' : 'error' })
+      })
+    return () => controller.abort()
+  }, [retryKey])
 
   const resetView = useCallback(() => setView(fitView(viewport.width, viewport.height)), [viewport])
 
@@ -106,6 +148,12 @@ function App() {
 
   const position = toPixels(marker, MAP.width, MAP.height)
 
+  if (bootstrap.status !== 'ready') {
+    return <StatusScreen state={bootstrap} retry={() => setRetryKey((key) => key + 1)} />
+  }
+
+  const { session, resolver } = bootstrap
+
   return (
     <main>
       <header className="topbar">
@@ -113,7 +161,7 @@ function App() {
           <span className="eyebrow">AIRPORT TECHNOLOGY UPG</span>
           <h1>Peta Interaktif</h1>
         </div>
-        <span className="status"><i /> Proof of concept</span>
+        <span className="status"><i /> {session.nama_lengkap} · {session.role}</span>
       </header>
 
       <section className="workspace" aria-label="Proof of concept editor peta">
@@ -123,6 +171,18 @@ function App() {
             <h2>Gedung Operasional</h2>
             <p className="muted">Lantai 1 · Contoh sintetis tanpa data production</p>
           </div>
+
+          {resolver && (
+            <div className="resolver-state" role="status">
+              <p className="section-label">Deep-link peralatan</p>
+              <strong>{resolver.peralatan.nama_peralatan}</strong>
+              <small>{resolver.pilihan.length === 0
+                ? 'Belum ditempatkan pada peta.'
+                : resolver.pilihan.length === 1
+                  ? `Ditemukan di ${resolver.pilihan[0].nama_peta}.`
+                  : `${resolver.pilihan.length} peta tersedia; pemilih peta menyusul di tahap viewer.`}</small>
+            </div>
+          )}
 
           <div className="equipment-card">
             <span className="equipment-icon">AT</span>
@@ -203,4 +263,3 @@ function App() {
 }
 
 export default App
-
