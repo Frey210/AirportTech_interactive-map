@@ -80,3 +80,10 @@ y_pixel = y_ratio * tinggi_asli
 - Folder `DENAH/` diabaikan Git karena merupakan aset operasional lokal, bukan source code.
 - Playwright memuat langsung sampel `7680×4320` dan `1920×1080`; perpindahan peta, fit-to-screen, marker, dan responsif berjalan tanpa error console atau overflow.
 - Waktu hingga viewer 500 marker siap sekitar 2,04 detik pada mesin pengembangan; denah nyata 33,18 MP sekitar 1,99 detik. Angka ini menjadi baseline, bukan SLA perangkat operasional.
+
+## Validasi audit peta M5 — 28 Agustus 2026
+
+- Migration `audit_peta` menyimpan jenis dan ID entitas, aksi, nilai relevan sebelum/sesudah, pengguna, serta waktu; sesi, token, dan isi file tidak disimpan.
+- Pembuatan draft, upload gambar, serta tambah/ubah/hapus penanda dicatat dalam transaksi yang sama dengan mutasi sehingga kegagalan audit membatalkan perubahan data.
+- Penyimpanan penanda tanpa perubahan tidak menambah audit maupun menaikkan `lock_version`.
+- Endpoint admin `GET /api/v1/peta/{id}/audit` mengembalikan maksimal 100 entri terbaru; role teknisi ditolak.

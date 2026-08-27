@@ -578,11 +578,11 @@ Pengguna tidak dapat melompat ke editor sebelum gambar tervalidasi. Draft dapat 
 
 ### 12.1 Audit
 
-- [ ] Buat tabel `audit_peta`.
+- [x] Buat tabel `audit_peta`.
 - [ ] Catat create/update/archive peta dan ikon.
-- [ ] Catat tambah/pindah/ubah/hapus penanda.
-- [ ] Simpan field sebelum/sesudah yang relevan, bukan seluruh payload sensitif.
-- [ ] Sediakan tampilan audit minimum untuk admin atau query operasional terdokumentasi.
+- [x] Catat tambah/pindah/ubah/hapus penanda.
+- [x] Simpan field sebelum/sesudah yang relevan, bukan seluruh payload sensitif.
+- [x] Sediakan tampilan audit minimum untuk admin atau query operasional terdokumentasi. *(endpoint admin `GET /api/v1/peta/{id}/audit`, maksimum 100 entri terbaru)*
 
 ### 12.2 Konsistensi
 
