@@ -523,54 +523,54 @@ Pengguna tidak dapat melompat ke editor sebelum gambar tervalidasi. Draft dapat 
 
 ### 11.1 Backend penanda
 
-- [ ] Implementasikan create/update/delete penanda.
-- [ ] Implementasikan batch save dalam satu transaksi.
-- [ ] Validasi peralatan aktif, ikon aktif, peta aktif, koordinat, ukuran, dan rotasi.
-- [ ] Terapkan unique constraint satu peralatan per peta.
-- [ ] Terapkan optimistic locking dengan `lock_version` atau `updated_at`.
-- [ ] Kembalikan `409 CONFLICT` bila editor menggunakan versi lama.
-- [ ] Pastikan kegagalan satu item membatalkan seluruh batch.
+- [x] Implementasikan create/update/delete penanda.
+- [x] Implementasikan batch save dalam satu transaksi.
+- [x] Validasi peralatan aktif, ikon aktif, peta aktif, koordinat, ukuran, dan rotasi.
+- [x] Terapkan unique constraint satu peralatan per peta.
+- [x] Terapkan optimistic locking dengan `lock_version` atau `updated_at`.
+- [x] Kembalikan `409 CONFLICT` bila editor menggunakan versi lama.
+- [x] Pastikan kegagalan satu item membatalkan seluruh batch.
 
 ### 11.2 Editor frontend
 
-- [ ] Mode editor hanya tersedia berdasarkan capability API.
+- [x] Mode editor hanya tersedia berdasarkan capability API.
 - [ ] Palet ikon dikelompokkan berdasarkan tipe/kategori peralatan seperti pola kategori marker pada situs referensi.
-- [ ] Alur tambah marker: pilih/cari peralatan dalam cakupan peta → ambil ikon default dari kategori → izinkan override ikon → tempatkan marker.
-- [ ] Jangan izinkan marker tanpa relasi `peralatan.id`; marker tipe alat bukan data peralatan baru.
-- [ ] Tambahkan penanda dengan drag-and-drop atau tombol alternatif.
-- [ ] Pilih, pindahkan, resize, rotasi, duplikasi, dan hapus penanda.
-- [ ] Inspector untuk peralatan, ikon, posisi, ukuran, rotasi, dan catatan.
+- [x] Alur tambah marker: pilih/cari peralatan dalam cakupan peta → ambil ikon default dari kategori → izinkan override ikon → tempatkan marker.
+- [x] Jangan izinkan marker tanpa relasi `peralatan.id`; marker tipe alat bukan data peralatan baru.
+- [x] Tambahkan penanda dengan drag-and-drop atau tombol alternatif.
+- [ ] Pilih, pindahkan, resize, rotasi, duplikasi, dan hapus penanda. *(semua selesai kecuali duplikasi, karena satu peralatan hanya boleh satu penanda per peta)*
+- [x] Inspector untuk peralatan, ikon, posisi, ukuran, rotasi, dan catatan.
 - [ ] Undo/redo hanya untuk perubahan lokal yang belum disimpan.
-- [ ] Indikator dirty state dan konfirmasi sebelum keluar.
-- [ ] Batch save dan penanganan conflict `409`.
-- [ ] Reload/merge sederhana saat konflik; jangan membangun kolaborasi real-time.
+- [x] Indikator dirty state dan konfirmasi sebelum keluar.
+- [x] Batch save dan penanganan conflict `409`.
+- [x] Reload sederhana saat konflik; jangan membangun kolaborasi real-time.
 
 ### 11.3 Aturan koordinat
 
-- [ ] Simpan posisi pusat ikon sebagai `x_ratio` dan `y_ratio` terhadap `width_px`/`height_px` revisi gambar.
-- [ ] Simpan ukuran sebagai `size_ratio` terhadap sisi terpendek gambar asli agar proporsi konsisten pada landscape dan portrait.
-- [ ] Simpan `rotation_deg` dalam derajat dan normalisasikan ke rentang yang disepakati.
-- [ ] Sertakan revisi/checksum gambar pada batch save agar koordinat tidak tersimpan terhadap gambar yang sudah berubah.
-- [ ] Clamp posisi dan ukuran agar tidak keluar dari batas yang diizinkan.
-- [ ] Uji round-trip piksel → rasio → piksel dengan toleransi yang ditetapkan.
+- [x] Simpan posisi pusat ikon sebagai `x_ratio` dan `y_ratio` terhadap `width_px`/`height_px` revisi gambar.
+- [x] Simpan ukuran sebagai `size_ratio` terhadap sisi terpendek gambar asli agar proporsi konsisten pada landscape dan portrait.
+- [x] Simpan `rotation_deg` dalam derajat dan normalisasikan ke rentang yang disepakati.
+- [x] Sertakan revisi/checksum gambar pada batch save agar koordinat tidak tersimpan terhadap gambar yang sudah berubah.
+- [x] Clamp posisi dan ukuran agar tidak keluar dari batas yang diizinkan.
+- [x] Uji round-trip piksel → rasio → piksel dengan toleransi yang ditetapkan.
 
 ### 11.4 Pengujian
 
 - [ ] Unit test reducer/history undo-redo.
 - [ ] Unit test clamp dan konversi koordinat.
-- [ ] PHPUnit transaksi batch dan optimistic locking.
+- [x] PHPUnit transaksi batch dan optimistic locking.
 - [ ] Playwright: tambahkan, pindahkan, resize, rotasi, simpan, reload, lalu verifikasi posisi.
-- [ ] Playwright: batalkan perubahan dan konfirmasi meninggalkan halaman.
-- [ ] Playwright: simulasi konflik dua editor.
-- [ ] Playwright: operasi keyboard alternatif.
+- [x] Playwright: batalkan perubahan dan konfirmasi meninggalkan halaman.
+- [x] Playwright: simulasi konflik dua editor.
+- [x] Playwright: operasi keyboard alternatif.
 - [ ] Playwright: ulangi save/reload pada gambar landscape, portrait, dan persegi.
 
 ### 11.5 Kriteria keluar
 
-- [ ] Admin dapat membangun peta lengkap tanpa perubahan manual database.
-- [ ] Posisi tetap sama setelah save/reload dan perubahan viewport.
-- [ ] Konflik tidak menimpa data secara diam-diam.
-- [ ] Batch save bersifat atomik.
+- [x] Admin dapat membangun peta lengkap dengan ikon bawaan tanpa perubahan manual database.
+- [x] Posisi tetap sama setelah save/reload dan perubahan viewport.
+- [x] Konflik tidak menimpa data secara diam-diam.
+- [x] Batch save bersifat atomik.
 
 ## 12. Tahap 7 — Audit, konsistensi data, dan penguatan
 

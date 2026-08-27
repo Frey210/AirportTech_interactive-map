@@ -21,7 +21,7 @@ export async function inspectMapFile(file: File) {
 
 const max = Math.max
 
-export default function MapWizard({ onClose }: { onClose: () => void }) {
+export default function MapWizard({ onClose, onCreated }: { onClose: () => void; onCreated?: (id: number) => void }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const [regions, setRegions] = useState<MapRegion[]>([])
   const [loading, setLoading] = useState(true)
@@ -97,7 +97,7 @@ export default function MapWizard({ onClose }: { onClose: () => void }) {
         {step === 4 && <dl className="wizard-summary"><div><dt>Gedung</dt><dd>{selectedRegion?.nama}</dd></div><div><dt>Lantai</dt><dd>{input.kode_lantai} · {input.nama_lantai}</dd></div><div><dt>Cakupan</dt><dd>{input.lokasi_ids.length} lokasi</dd></div><div><dt>Denah</dt><dd>{file?.name}<br />{dimensions?.width} × {dimensions?.height} px</dd></div></dl>}
       </section>}
 
-      <footer>{done ? <button type="button" className="primary" onClick={onClose}>Selesai</button> : <><button type="button" className="secondary" onClick={step === 0 ? onClose : () => { setError(''); setStep(step - 1) }} disabled={submitting}>{step === 0 ? 'Batal' : 'Kembali'}</button><button type="submit" className="primary" disabled={loading || submitting}>{submitting ? 'Menyimpan…' : step === 4 ? (draftId ? 'Coba unggah lagi' : 'Buat peta') : 'Lanjut'}</button></>}</footer>
+      <footer>{done ? <button type="button" className="primary" onClick={() => draftId ? onCreated?.(draftId) : onClose()}>Buka editor</button> : <><button type="button" className="secondary" onClick={step === 0 ? onClose : () => { setError(''); setStep(step - 1) }} disabled={submitting}>{step === 0 ? 'Batal' : 'Kembali'}</button><button type="submit" className="primary" disabled={loading || submitting}>{submitting ? 'Menyimpan…' : step === 4 ? (draftId ? 'Coba unggah lagi' : 'Buat peta') : 'Lanjut'}</button></>}</footer>
     </form>
   </dialog>
 }

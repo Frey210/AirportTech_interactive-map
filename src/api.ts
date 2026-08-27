@@ -24,6 +24,8 @@ export type MapSummary = {
   nama_lantai: string
   urutan_lantai: number
   revisi: number
+  status: 'siap_diedit' | 'terbit'
+  checksum_sha256: string | null
   width_px: number | null
   height_px: number | null
   file_url: string | null
@@ -61,6 +63,16 @@ export type MapDetail = {
   penanda: MapMarker[]
 }
 
+export type MapIcon = { id: number; kategori_peralatan_id: number | null; nama: string; file_url: string; size_ratio_default: number }
+export type MapEquipment = { id: number; nama_peralatan: string; scan_code: string | null; kategori_peralatan_id: number | null; kategori: string | null; lokasi: string }
+export type MapEditorData = MapDetail & { ikon: MapIcon[]; peralatan: MapEquipment[] }
+export type MarkerSaveInput = {
+  revisi: number
+  checksum_sha256: string
+  penanda: Array<{ id: number | null; peralatan_id: number; ikon_peta_id: number; x_ratio: number; y_ratio: number; size_ratio: number; rotation_deg: number; catatan: string | null; lock_version: number }>
+  hapus: Array<{ id: number; lock_version: number }>
+}
+
 export function filterMarkers(markers: MapMarker[], filters: { query: string; category: string; facility: string; status: string; userStatus: string }) {
   const needle = filters.query.trim().toLocaleLowerCase('id')
   return markers.filter(({ peralatan }) =>
@@ -76,6 +88,7 @@ let csrf: Session['csrf'] | null = null
 
 export class SessionExpiredError extends Error {}
 export class ForbiddenError extends Error {}
+export class ConflictError extends Error {}
 
 async function getData<T>(url: string, request: Requester, signal?: AbortSignal): Promise<T> {
   const response = await request(url, { credentials: 'same-origin', signal })
@@ -103,10 +116,16 @@ export const loadMaps = (request: Requester = fetch, signal?: AbortSignal) =>
 export const loadMapDetail = (id: number, request: Requester = fetch, signal?: AbortSignal) =>
   getData<MapDetail>(`/api/v1/peta/${id}`, request, signal)
 
+export const loadEditableMaps = (request: Requester = fetch, signal?: AbortSignal) =>
+  getData<MapSummary[]>('/api/v1/peta/editor', request, signal)
+
+export const loadMapEditor = (id: number, request: Requester = fetch, signal?: AbortSignal) =>
+  getData<MapEditorData>(`/api/v1/peta/${id}/editor`, request, signal)
+
 export const loadMapRegions = (request: Requester = fetch, signal?: AbortSignal) =>
   getData<MapRegion[]>('/api/v1/peta/referensi/wilayah', request, signal)
 
-async function mutate<T>(url: string, body: MapDraftInput | FormData, request: Requester): Promise<T> {
+async function mutate<T>(url: string, body: object | FormData, request: Requester): Promise<T> {
   if (!csrf) throw new Error('Token keamanan belum tersedia. Muat ulang halaman.')
   const form = body instanceof FormData
   if (form) body.append(csrf.name, csrf.hash)
@@ -117,6 +136,7 @@ async function mutate<T>(url: string, body: MapDraftInput | FormData, request: R
   })
   const payload = await response.json() as { data?: T; csrf?: Session['csrf']; error?: { message?: string } }
   if (payload.csrf) csrf = payload.csrf
+  if (response.status === 409) throw new ConflictError(payload.error?.message || 'Data telah berubah.')
   if (!response.ok || !payload.data) throw new Error(payload.error?.message || `Permintaan gagal (${response.status}).`)
   return payload.data
 }
@@ -129,3 +149,6 @@ export const uploadMapImage = (id: number, file: File, request: Requester = fetc
   body.append('gambar', file)
   return mutate<MapDraft>(`/api/v1/peta/${id}/gambar`, body, request)
 }
+
+export const saveMapMarkers = (id: number, input: MarkerSaveInput, request: Requester = fetch) =>
+  mutate<MapEditorData>(`/api/v1/peta/${id}/penanda`, input, request)

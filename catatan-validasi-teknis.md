@@ -61,6 +61,16 @@ y_pixel = y_ratio * tinggi_asli
 - Playwright menyelesaikan wizard memakai `TAMPAK ATAS BASEMENT.png` (1920×1080), mensimulasikan satu kegagalan upload, lalu berhasil pada retry; dialog juga tetap muat pada viewport 390×844.
 - Thumbnail, turunan viewer 4096 px, pengelolaan ikon, serta editor penanda tetap menjadi pekerjaan berikutnya.
 
+## Validasi editor penanda M4 — 28 Agustus 2026
+
+- API admin menyediakan daftar peta editable, detail editor, kandidat peralatan sesuai `peta_lokasi`, palet ikon aktif, dan batch create/update/delete penanda.
+- Batch memeriksa revisi/checksum gambar, peralatan serta ikon aktif, cakupan lokasi, koordinat, ukuran, rotasi, unique equipment, dan `lock_version`; konflik mengembalikan `409` tanpa menimpa data lokal.
+- Migration menambahkan satu ikon bawaan terpercaya sehingga editor langsung dapat dipakai sebelum fitur upload ikon khusus selesai.
+- Editor mendukung tambah di tengah peta, drag, input posisi/ukuran/rotasi, tombol geser keyboard, override ikon, catatan, hapus, dirty-state, konfirmasi keluar, save, dan reload konflik.
+- PHPUnit fokus: 5 tes dan 23 assertion lulus. Vitest, typecheck, dan build production lulus; warning hanya chunk utama sekitar 530 kB minified/163 kB gzip.
+- Playwright menambah penanda pada denah 1920×1080, menggeser lewat tombol, memutar, menyimpan/reload, mensimulasikan konflik, memeriksa konfirmasi keluar, dan memastikan tidak ada overflow pada 390×844.
+- Undo/redo, upload ikon khusus, duplikasi gaya penanda, serta matriks portrait/persegi tetap menjadi increment berikutnya.
+
 ## Validasi sampel denah — 28 Agustus 2026
 
 - Ditemukan 32 sampel: 7 PNG `1920×1080` (sekitar 1,8–2,1 MB) dan 25 JPEG `7680×4320` (33,18 MP; terbesar sekitar 8,1 MB).
