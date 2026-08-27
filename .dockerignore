@@ -1,0 +1,10 @@
+node_modules
+dist
+.git
+.env*
+DENAH
+graphify-out
+playwright-report
+test-results
+screenshots
+videos

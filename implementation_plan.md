@@ -37,8 +37,8 @@ Keputusan berikut digunakan sebagai default sampai ada keputusan produk yang ber
 | Sistem koordinat | Posisi dan ukuran penanda disimpan sebagai rasio terhadap dimensi asli gambar `0..1`; tidak menggunakan PostGIS pada MVP |
 | Penguncian gambar | `width_px`, `height_px`, dan checksum file dikunci pada revisi peta; gambar tidak boleh diganti diam-diam setelah memiliki penanda |
 | Autentikasi | Sesi CodeIgniter pada origin yang sama |
-| URL produksi | Frontend di `/peta`, API di `/api/v1` |
-| Deep-link peralatan | CodeIgniter membuka `/peta/?peralatan_id={id}`; viewer memilih peta dan memusatkan penanda |
+| URL produksi | Frontend di `/maps`, API di `/api/v1` |
+| Deep-link peralatan | CodeIgniter membuka `/maps/?peralatan_id={id}`; viewer memilih peta dan memusatkan penanda |
 | Penyimpanan aset | Volume persisten server; metadata disimpan di PostgreSQL |
 | Ikon MVP | PNG dan WebP; SVG ditolak |
 | Status penanda | Menggunakan status peralatan dari API; aturan warna difinalkan saat viewer |
@@ -242,7 +242,7 @@ Frontend boleh dikembangkan memakai fixture setelah kontrak API disepakati, teta
 - `GET /api/v1/peta/{id}`
 - `GET /api/v1/peralatan/{id}/peta`
 
-Kontrak deep-link frontend adalah `/peta/?peralatan_id={id}`. Endpoint `GET /api/v1/peralatan/{id}/peta` mengembalikan daftar peta tempat peralatan sudah memiliki penanda serta peta lantai yang disarankan dari `peralatan.lokasi_id → peta_lokasi`.
+Kontrak deep-link frontend adalah `/maps/?peralatan_id={id}`. Endpoint `GET /api/v1/peralatan/{id}/peta` mengembalikan daftar peta tempat peralatan sudah memiliki penanda serta peta lantai yang disarankan dari `peralatan.lokasi_id → peta_lokasi`.
 
 Endpoint tulis didefinisikan sekarang tetapi diterapkan setelah jalur read-only stabil.
 
@@ -365,8 +365,8 @@ Struktur boleh tumbuh saat ada isi. Jangan membuat file kosong atau abstraksi sa
 ### 8.5 Navigasi dan deep-link CodeIgniter
 
 - [x] Tambahkan menu utama **Peta Interaktif** pada `app/Views/layouts/main.php` untuk semua role yang sudah login.
-- [x] Gunakan URL same-origin `/peta/`; jangan menanam hostname LAN, Tailscale, atau domain publik di view.
-- [x] Tambahkan tombol **Buka di Peta Interaktif** pada `app/Views/peralatan/detail.php` dengan URL `/peta/?peralatan_id={id}`.
+- [x] Gunakan URL same-origin `/maps/`; jangan menanam hostname LAN, Tailscale, atau domain publik di view.
+- [x] Tambahkan tombol **Buka di Peta Interaktif** pada `app/Views/peralatan/detail.php` dengan URL `/maps/?peralatan_id={id}`.
 - [x] Pertahankan `ScanController::resolve()` yang sudah mengarahkan QR peralatan ke halaman detail; jangan membuat resolver scan baru.
 - [x] Saat query `peralatan_id` diterima, viewer memanggil resolver peta, membuka peta yang sesuai, memusatkan marker, dan membuka panel detail.
 - [x] Tangani tiga hasil resolver: satu peta langsung dibuka, beberapa peta meminta pilihan, dan belum dipetakan menampilkan state kosong yang jelas.
@@ -621,10 +621,10 @@ Pengguna tidak dapat melompat ke editor sebelum gambar tervalidasi. Draft dapat 
 ### 13.1 Build dan container
 
 - [ ] Buat build frontend reproducible dengan lockfile.
-- [ ] Gunakan multi-stage Docker build bila frontend menjadi container terpisah.
-- [ ] Sajikan frontend pada `/peta` dan API pada `/api/v1` dengan origin yang sama.
-- [ ] Pastikan fallback SPA hanya berlaku di `/peta`, bukan mengambil route CodeIgniter.
-- [ ] Tambahkan health check frontend/container bila terpisah.
+- [x] Gunakan multi-stage Docker build bila frontend menjadi container terpisah.
+- [x] Sajikan frontend pada `/maps` dan API pada `/api/v1` dengan origin yang sama.
+- [x] Pastikan fallback SPA hanya berlaku di `/maps`, bukan mengambil route CodeIgniter.
+- [x] Tambahkan health check frontend/container bila terpisah.
 - [ ] Mount volume aset peta/ikon secara persisten pada backend.
 
 ### 13.2 CI
@@ -752,7 +752,7 @@ e2e/
 
 ### 17.3 Smoke test deployment
 
-1. Buka URL `/peta`.
+1. Buka URL `/maps`.
 2. Login menggunakan akun test yang disediakan secara aman.
 3. Pastikan daftar peta tampil.
 4. Buka satu peta dan pilih satu penanda.

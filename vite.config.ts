@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/peta/',
+  base: '/maps/',
   server: {
     proxy: {
       '/api': {
@@ -13,4 +13,3 @@ export default defineConfig({
     },
   },
 })
-

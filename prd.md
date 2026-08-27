@@ -81,7 +81,7 @@ Arsitektur mengikuti topologi hibrida:
 ```text
 Browser
   ├─ Halaman CodeIgniter (HTML/SSR)
-  └─ Aplikasi Vite + React (/peta)
+  └─ Aplikasi Vite + React (/maps)
                  │
                  ▼
         REST API CodeIgniter (/api/v1)
@@ -96,7 +96,7 @@ Browser
 
 - CodeIgniter tetap menjadi application server dan pemilik API.
 - React hanya mengakses data melalui `/api/v1`; React tidak terhubung langsung ke PostgreSQL.
-- Produksi menggunakan origin yang sama, misalnya `https://airport-tech.farlabs.my.id/peta`, agar sesi, CSRF, CORS, dan operasional tetap sederhana.
+- Produksi menggunakan origin yang sama, yaitu `https://airport-tech.farlabs.my.id/maps/`, agar sesi, CSRF, CORS, dan operasional tetap sederhana.
 - Pada pengembangan lokal, Vite menggunakan proxy ke CodeIgniter.
 - Build React dapat disajikan sebagai aset statis oleh web server yang sama atau container frontend terpisah di belakang reverse proxy yang sama.
 - Autentikasi MVP memakai sesi CodeIgniter yang sudah ada. JWT baru dipertimbangkan jika aplikasi harus berada pada origin atau klien yang berbeda.
@@ -459,7 +459,7 @@ Respons error minimum:
 - CI frontend menjalankan lint, type-check, unit test, dan build.
 - CI backend menjalankan PHPUnit dan migration check.
 - Artifact React dibangun secara reproducible; server tidak melakukan development build manual.
-- Reverse proxy melayani `/peta` dan meneruskan `/api/v1` ke CodeIgniter pada origin yang sama.
+- Reverse proxy melayani `/maps` dan meneruskan `/api/v1` ke CodeIgniter pada origin yang sama.
 - Rilis frontend dan backend yang mengubah kontrak API harus kompatibel selama proses deployment.
 - Rollback frontend tidak boleh membutuhkan rollback database yang destruktif.
 

@@ -87,3 +87,11 @@ y_pixel = y_ratio * tinggi_asli
 - Pembuatan draft, upload gambar, serta tambah/ubah/hapus penanda dicatat dalam transaksi yang sama dengan mutasi sehingga kegagalan audit membatalkan perubahan data.
 - Penyimpanan penanda tanpa perubahan tidak menambah audit maupun menaikkan `lock_version`.
 - Endpoint admin `GET /api/v1/peta/{id}/audit` mengembalikan maksimal 100 entri terbaru; role teknisi ditolak.
+
+## Validasi path produksi `/maps` — 28 Agustus 2026
+
+- Vite memakai base `/maps/`; hasil build mengarah ke `/maps/assets/...` dan favicon `/maps/favicon.svg`.
+- Container Nginx hanya melayani `/maps`, memiliki fallback SPA terbatas pada path tersebut, serta health check `/healthz`; `/api/v1` tetap menuju CodeIgniter pada origin yang sama.
+- Compose mempublikasikan frontend pada port `8082`. Route Cloudflare Tunnel `^/maps(/.*)?$` harus ditempatkan sebelum route catch-all aplikasi pada port `8081`.
+- Vitest 10 tes, typecheck, build production, validasi Compose, dan smoke test Playwright pada `http://127.0.0.1:4173/maps/` lulus.
+- Image Docker belum dijalankan lokal karena Docker Desktop tidak aktif; build image dan health check container wajib dijalankan di server sebelum route Cloudflare diaktifkan.
