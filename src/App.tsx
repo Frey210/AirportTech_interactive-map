@@ -6,6 +6,7 @@ import {
   type MapDetail, type MapMarker, type MapResolver, type MapSummary, type Session,
 } from './api'
 import { constrainView } from './coordinates'
+import MapWizard from './MapWizard'
 
 const MIN_ZOOM = 0.2
 const MAX_ZOOM = 4
@@ -63,6 +64,7 @@ function App() {
   const params = useMemo(() => new URLSearchParams(window.location.search), [])
   const [bootstrap, setBootstrap] = useState<BootstrapState>({ status: 'loading' })
   const [retryKey, setRetryKey] = useState(0)
+  const [showWizard, setShowWizard] = useState(() => params.get('wizard') === 'baru')
   const [maps, setMaps] = useState<MapSummary[]>([])
   const [mapsStatus, setMapsStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [mapsRetry, setMapsRetry] = useState(0)
@@ -185,6 +187,7 @@ function App() {
             <option value="">Pilih peta</option>
             {[...new Set(maps.map((map) => map.gedung.id))].map((buildingId) => { const buildingMaps = maps.filter((map) => map.gedung.id === buildingId); return <optgroup key={buildingId} label={buildingMaps[0].gedung.nama}>{buildingMaps.map((map) => <option key={map.id} value={map.id}>{map.nama_lantai} — {map.nama_peta}</option>)}</optgroup> })}
           </select>
+          {session.capabilities.edit_peta && <button className="new-map" type="button" onClick={() => setShowWizard(true)}>+ Tambah peta</button>}
           {mapsStatus === 'loading' && <p className="muted" role="status">Memuat daftar peta…</p>}
           {mapsStatus === 'error' && <div className="error" role="alert">Daftar peta gagal dimuat.<button onClick={() => setMapsRetry((value) => value + 1)}>Coba lagi</button></div>}
           {mapsStatus === 'ready' && maps.length === 0 && <p className="empty">Belum ada peta yang diterbitkan.</p>}
@@ -229,6 +232,7 @@ function App() {
         {detail && mapImage.image && <Stage width={viewport.width} height={viewport.height} x={view.x} y={view.y} scaleX={view.scale} scaleY={view.scale} draggable dragBoundFunc={(position) => bounded({ ...position, scale: view.scale })} onDragEnd={(event) => setView(bounded({ x: event.target.x(), y: event.target.y(), scale: view.scale }))} onWheel={handleWheel}><Layer listening={false}><KonvaImage image={mapImage.image} width={detail.peta.width_px ?? mapImage.image.naturalWidth} height={detail.peta.height_px ?? mapImage.image.naturalHeight} shadowBlur={18} shadowOpacity={.18} /></Layer><Layer>{filteredMarkers.map((marker) => <MarkerNode key={marker.id} marker={marker} map={detail.peta} selected={marker.id === selectedMarkerId} onSelect={() => focusMarker(marker)} />)}</Layer></Stage>}
       </div></div>
     </section>
+    {showWizard && <MapWizard onClose={() => setShowWizard(false)} />}
   </main>
 }
 

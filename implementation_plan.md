@@ -471,35 +471,35 @@ Pengguna tidak dapat melompat ke editor sebelum gambar tervalidasi. Draft dapat 
 
 ### 10.2 Backend upload
 
-- [ ] Implementasikan create/update/archive peta.
-- [ ] Implementasikan upload gambar dasar.
-- [ ] Baca dimensi dari hasil decode server dan simpan sebagai `width_px`/`height_px`; jangan menerima dimensi dari browser sebagai sumber kebenaran.
-- [ ] Terima rasio aspek dan resolusi yang bervariasi selama lolos batas byte, sisi maksimum, dan total piksel.
+- [ ] Implementasikan create/update/archive peta. *(create draft selesai; update/archive belum)*
+- [x] Implementasikan upload gambar dasar.
+- [x] Baca dimensi dari hasil decode server dan simpan sebagai `width_px`/`height_px`; jangan menerima dimensi dari browser sebagai sumber kebenaran.
+- [x] Terima rasio aspek dan resolusi yang bervariasi selama lolos batas byte, sisi maksimum, dan total piksel.
 - [ ] Implementasikan create/update/nonaktifkan ikon.
-- [ ] Validasi MIME dari isi file, ekstensi, ukuran file, dimensi, dan total piksel.
-- [ ] Tolak SVG serta tipe lain di luar PNG/JPEG/WebP.
-- [ ] Gunakan nama file acak dan path yang tidak dapat dieksekusi.
+- [x] Validasi MIME dari isi file, ukuran file, dimensi, dan total piksel; ekstensi penyimpanan diturunkan dari MIME hasil decode.
+- [x] Tolak SVG serta tipe lain di luar PNG/JPEG/WebP.
+- [x] Gunakan nama file acak dan path yang tidak dapat dieksekusi.
 - [ ] Buat thumbnail server-side.
 - [ ] Buat turunan gambar viewer dengan rasio sama dan sisi panjang maksimum awal 4.096 px; koordinat tetap memakai metadata dimensi asli.
-- [ ] Hapus file baru jika transaksi database gagal.
-- [ ] Jangan hapus file yang masih direferensikan.
+- [x] Hapus file baru jika transaksi database gagal.
+- [x] Jangan hapus file yang masih direferensikan.
 - [ ] Jika peta sudah memiliki penanda, penggantian gambar membuat revisi baru dan mewajibkan pemeriksaan ulang posisi; jangan memindahkan marker otomatis.
-- [ ] Jika belum memiliki penanda, admin boleh mengganti gambar pada draft dan metadata dimensi/checksum diperbarui dalam transaksi yang sama.
+- [x] Jika belum memiliki penanda, admin boleh mengganti gambar pada draft dan metadata dimensi/checksum diperbarui; peta berpenanda ditolak dan diarahkan membuat revisi.
 
 ### 10.3 Frontend admin
 
-- [ ] Wizard lima langkah dengan indikator progres dan tombol kembali/lanjut.
-- [ ] Pemilih gedung hanya menampilkan record `GEDUNG` aktif.
-- [ ] Pemilih cakupan hanya menampilkan `SUBLOKASI` dari gedung terpilih dan mencegah duplikasi cakupan aktif.
-- [ ] Preview gambar sebelum upload.
-- [ ] Tampilkan dimensi asli yang dibaca server dan rasio aspek pada langkah konfirmasi.
-- [ ] Progress, error validasi, dan retry upload.
+- [x] Wizard lima langkah dengan indikator progres dan tombol kembali/lanjut.
+- [x] Pemilih gedung hanya menampilkan record `GEDUNG` aktif.
+- [x] Pemilih cakupan hanya menampilkan `SUBLOKASI` dari gedung terpilih dan mencegah duplikasi cakupan aktif.
+- [x] Preview gambar sebelum upload.
+- [x] Tampilkan dimensi pada langkah konfirmasi dan ganti dengan dimensi hasil decode server setelah upload.
+- [x] Progress, error validasi, dan retry upload dengan draft yang tetap tersimpan.
 - [ ] Daftar dan pengelolaan ikon.
 - [ ] Konfirmasi arsip/nonaktifkan.
 
 ### 10.4 Pengujian
 
-- [ ] PHPUnit menggunakan `FakeUploadedFile` mengikuti pola service foto yang sudah ada.
+- [x] PHPUnit menggunakan `FakeUploadedFile` mengikuti pola service foto yang sudah ada.
 - [ ] Test tipe palsu, berkas terlalu besar, gambar rusak, dan dimensi berlebihan.
 - [ ] Test gambar landscape, portrait, persegi, resolusi kecil, dan resolusi besar yang masih berada dalam batas.
 - [ ] Test dimensi yang dikirim browser diabaikan dan metadata selalu berasal dari hasil decode server.

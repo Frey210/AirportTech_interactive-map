@@ -4,7 +4,12 @@ export type Session = {
   nama_lengkap: string
   role: string
   capabilities: { lihat_peta: boolean; edit_peta: boolean; periksa_masalah_pemetaan: boolean }
+  csrf: { name: string; hash: string }
 }
+
+export type MapRegion = { id: number; kode: string | null; nama: string; sublokasi: Array<{ id: number; kode: string | null; nama: string }> }
+export type MapDraft = { id: number; status: 'draft' | 'siap_diedit'; revisi?: number; width_px?: number; height_px?: number; ukuran_byte?: number }
+export type MapDraftInput = { gedung_id: number; kode_lantai: string; nama_lantai: string; urutan_lantai: number; nama_peta: string; lokasi_ids: number[] }
 
 export type MapResolver = {
   peralatan: { id: number; nama_peralatan: string; is_aktif: boolean }
@@ -67,6 +72,7 @@ export function filterMarkers(markers: MapMarker[], filters: { query: string; ca
 }
 
 type Requester = (input: string, init?: RequestInit) => Promise<Response>
+let csrf: Session['csrf'] | null = null
 
 export class SessionExpiredError extends Error {}
 export class ForbiddenError extends Error {}
@@ -81,6 +87,7 @@ async function getData<T>(url: string, request: Requester, signal?: AbortSignal)
 
 export async function loadBootstrap(search: string, request: Requester = fetch, signal?: AbortSignal) {
   const session = await getData<Session>('/api/v1/me', request, signal)
+  csrf = session.csrf
   const rawId = new URLSearchParams(search).get('peralatan_id')
   const peralatanId = rawId && /^\d+$/.test(rawId) ? Number(rawId) : null
   const resolver = peralatanId === null
@@ -95,3 +102,30 @@ export const loadMaps = (request: Requester = fetch, signal?: AbortSignal) =>
 
 export const loadMapDetail = (id: number, request: Requester = fetch, signal?: AbortSignal) =>
   getData<MapDetail>(`/api/v1/peta/${id}`, request, signal)
+
+export const loadMapRegions = (request: Requester = fetch, signal?: AbortSignal) =>
+  getData<MapRegion[]>('/api/v1/peta/referensi/wilayah', request, signal)
+
+async function mutate<T>(url: string, body: MapDraftInput | FormData, request: Requester): Promise<T> {
+  if (!csrf) throw new Error('Token keamanan belum tersedia. Muat ulang halaman.')
+  const form = body instanceof FormData
+  if (form) body.append(csrf.name, csrf.hash)
+  const response = await request(url, {
+    method: 'POST', credentials: 'same-origin',
+    headers: form ? undefined : { 'Content-Type': 'application/json' },
+    body: form ? body : JSON.stringify({ ...body, [csrf.name]: csrf.hash }),
+  })
+  const payload = await response.json() as { data?: T; csrf?: Session['csrf']; error?: { message?: string } }
+  if (payload.csrf) csrf = payload.csrf
+  if (!response.ok || !payload.data) throw new Error(payload.error?.message || `Permintaan gagal (${response.status}).`)
+  return payload.data
+}
+
+export const createMapDraft = (input: MapDraftInput, request: Requester = fetch) =>
+  mutate<MapDraft>('/api/v1/peta', input, request)
+
+export const uploadMapImage = (id: number, file: File, request: Requester = fetch) => {
+  const body = new FormData()
+  body.append('gambar', file)
+  return mutate<MapDraft>(`/api/v1/peta/${id}/gambar`, body, request)
+}

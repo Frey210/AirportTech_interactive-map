@@ -52,6 +52,15 @@ y_pixel = y_ratio * tinggi_asli
 - Batas awal upload ditetapkan 12 MiB, 8.192 px per sisi, dan 40 megapiksel; perlu dikonfirmasi terhadap memory limit server saat endpoint upload dibuat.
 - Benchmark 500 penanda dicatat pada browser dan perangkat operasional, bukan hanya mesin pengembangan.
 
+## Validasi wizard peta M3 — 28 Agustus 2026
+
+- API admin menyediakan referensi gedung/sublokasi aktif, create draft, dan upload gambar dengan CSRF same-origin.
+- Server mendeteksi MIME serta dimensi dari isi file, membatasi 12 MiB/8192 px/40 MP, menyimpan checksum SHA-256, dan menolak penggantian gambar jika penanda sudah ada.
+- Wizard lima langkah memvalidasi gedung, metadata lantai, cakupan, serta file; upload yang gagal dapat dicoba ulang tanpa membuat draft kedua.
+- PHPUnit fokus: 4 tes dan 15 assertion lulus; Vitest: 9 tes, typecheck, dan build production lulus.
+- Playwright menyelesaikan wizard memakai `TAMPAK ATAS BASEMENT.png` (1920×1080), mensimulasikan satu kegagalan upload, lalu berhasil pada retry; dialog juga tetap muat pada viewport 390×844.
+- Thumbnail, turunan viewer 4096 px, pengelolaan ikon, serta editor penanda tetap menjadi pekerjaan berikutnya.
+
 ## Validasi sampel denah — 28 Agustus 2026
 
 - Ditemukan 32 sampel: 7 PNG `1920×1080` (sekitar 1,8–2,1 MB) dan 25 JPEG `7680×4320` (33,18 MP; terbesar sekitar 8,1 MB).

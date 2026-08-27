@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { filterMarkers, ForbiddenError, loadBootstrap, loadMapDetail, loadMaps, SessionExpiredError, type MapMarker } from './api'
+import { createMapDraft, filterMarkers, ForbiddenError, loadBootstrap, loadMapDetail, loadMaps, SessionExpiredError, type MapMarker } from './api'
 
 const json = (data: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(data), {
   status,
@@ -38,5 +38,13 @@ describe('loadBootstrap', () => {
     const marker = { peralatan: { nama_peralatan: 'UPS Ruang Server', scan_code: 'UPS-001', kategori: 'Kelistrikan', fasilitas: 'Terminal', status: 'Normal', user_status: 'Digunakan' } } as MapMarker
     expect(filterMarkers([marker], { query: 'ups-001', category: 'Kelistrikan', facility: 'Terminal', status: 'Normal', userStatus: 'Digunakan' })).toEqual([marker])
     expect(filterMarkers([marker], { query: 'radio', category: '', facility: '', status: '', userStatus: '' })).toEqual([])
+  })
+
+  it('mengirim token CSRF saat membuat draft peta', async () => {
+    await loadBootstrap('', () => json({ data: { id: 1, username: 'admin', nama_lengkap: 'Admin', role: 'admin', capabilities: {}, csrf: { name: 'csrf_test_name', hash: 'aman' } } }))
+    const request = vi.fn((_url: string, _init?: RequestInit) => json({ data: { id: 9, status: 'draft' }, csrf: { name: 'csrf_test_name', hash: 'baru' } }, 201))
+
+    await expect(createMapDraft({ gedung_id: 1, kode_lantai: 'L1', nama_lantai: 'Lantai 1', urutan_lantai: 1, nama_peta: 'Denah', lokasi_ids: [2] }, request)).resolves.toMatchObject({ id: 9 })
+    expect(JSON.parse((request.mock.calls[0][1] as RequestInit).body as string)).toMatchObject({ csrf_test_name: 'aman', gedung_id: 1 })
   })
 })
