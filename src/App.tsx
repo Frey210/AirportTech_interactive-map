@@ -263,7 +263,10 @@ function App() {
   const { session, resolver } = bootstrap
   const zoomed = detail ? view.scale > fitView(viewport, detail.peta).scale * 1.08 : false
   return <main>
-    <header className="topbar"><div><span className="eyebrow">AIRPORT TECHNOLOGY UPG</span><h1>Peta Interaktif</h1></div><span className="status"><i /> {session.nama_lengkap} · {session.role}</span></header>
+    <header className="topbar">
+      <a className="brand" href="/dashboard" aria-label="Kembali ke dashboard Airport Technology"><span aria-hidden="true">AT</span><div><small>AIRPORT TECHNOLOGY UPG</small><strong>Peta Interaktif</strong></div></a>
+      <span className="status"><i /> {session.nama_lengkap} · {session.role}</span>
+    </header>
     <section className={`workspace ${menuOpen ? 'menu-open' : 'menu-closed'}`} aria-label="Viewer peta peralatan">
       <aside id="map-sidebar" className="sidebar" aria-hidden={!menuOpen} inert={!menuOpen}>
         <div>
