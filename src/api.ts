@@ -53,6 +53,7 @@ export type MapMarker = {
     user_status: string
     status: string
     is_aktif: boolean
+    foto_url: string | null
     detail_url: string
   }
 }
@@ -64,7 +65,7 @@ export type MapDetail = {
 }
 
 export type MapIcon = { id: number; kategori_peralatan_id: number | null; nama: string; file_url: string; size_ratio_default: number }
-export type MapEquipment = { id: number; nama_peralatan: string; scan_code: string | null; kategori_peralatan_id: number | null; kategori: string | null; fasilitas: string | null; lokasi: string; user_status: string; status: string; is_aktif: boolean }
+export type MapEquipment = { id: number; nama_peralatan: string; scan_code: string | null; kategori_peralatan_id: number | null; kategori: string | null; fasilitas: string | null; lokasi: string; user_status: string; status: string; is_aktif: boolean; foto_url: string | null }
 export type MapEditorData = MapDetail & { ikon: MapIcon[]; peralatan: MapEquipment[] }
 export type MarkerSaveInput = {
   revisi: number
