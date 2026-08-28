@@ -26,8 +26,11 @@ h2 { font-size: 22px; margin: 7px 0 5px; letter-spacing: -.02em; }
 .status { display: flex; align-items: center; gap: 8px; border: 1px solid #c9d5d9; border-radius: 999px; padding: 9px 13px; font-size: 12px; font-weight: 700; background: #f7f9f9; }
 .status i { width: 8px; height: 8px; background: #47a36f; border-radius: 50%; }
 
-.workspace { max-width: 1600px; height: calc(100vh - 116px); min-height: 600px; margin: auto; display: grid; grid-template-columns: 320px minmax(0, 1fr); overflow: hidden; border: 1px solid #c9d5d9; border-radius: 18px; background: #f8faf9; box-shadow: 0 20px 60px rgba(24, 50, 64, .09); }
+.workspace { position: relative; max-width: 1600px; height: calc(100vh - 116px); min-height: 600px; margin: auto; display: grid; grid-template-columns: 320px minmax(0, 1fr); overflow: hidden; border: 1px solid #c9d5d9; border-radius: 18px; background: #f8faf9; box-shadow: 0 20px 60px rgba(24, 50, 64, .09); }
+.workspace.menu-closed { grid-template-columns: 0 minmax(0, 1fr); }
+.workspace.menu-closed > .sidebar { visibility: hidden; overflow: hidden; padding-inline: 0; }
 .sidebar { padding: 24px; border-right: 1px solid #d5dfe2; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+.sidebar-scrim { display: none; }
 .muted { color: #6c7e87; font-size: 13px; line-height: 1.5; margin: 0; }
 .equipment-card { display: flex; align-items: center; gap: 12px; padding: 13px; border: 1px solid #d2dcdf; background: #fff; border-radius: 12px; }
 .resolver-state { padding: 13px; border: 1px solid #d2dcdf; background: #edf2f3; border-radius: 12px; }
@@ -94,14 +97,23 @@ output { text-align: center; color: #526b76; font: 11px ui-monospace, monospace;
 
 .canvas-panel { min-width: 0; display: flex; flex-direction: column; background: #dce4e6; }
 .canvas-toolbar { height: 54px; flex: 0 0 auto; display: flex; align-items: center; justify-content: flex-end; gap: 7px; padding: 0 15px; background: rgba(249, 251, 250, .93); border-bottom: 1px solid #cbd6da; }
-.canvas-toolbar button { min-width: 34px; height: 34px; border: 1px solid #ccd7da; border-radius: 8px; background: #fff; cursor: pointer; color: #173b51; font-weight: 800; }
+.canvas-toolbar button { min-width: 44px; height: 44px; border: 1px solid #ccd7da; border-radius: 8px; background: #fff; cursor: pointer; color: #173b51; font-weight: 800; }
 .canvas-toolbar button:hover { border-color: #80969f; }
 .canvas-toolbar span { min-width: 46px; text-align: center; color: #60737d; font: 12px ui-monospace, monospace; }
 .canvas-toolbar .fit { padding: 0 12px; margin-left: 4px; white-space: nowrap; }
 .canvas-toolbar .map-title { min-width: 0; margin-right: auto; overflow: hidden; color: #173b51; font-family: inherit; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
 .editing-badge { padding: 6px 9px; border-radius: 999px; background: #fff1e6; color: #9a4810; font-size: 11px; white-space: nowrap; }
-.canvas { position: relative; min-height: 0; flex: 1; overflow: hidden; background-color: #dce4e6; background-image: radial-gradient(#b9c6ca 1px, transparent 1px); background-size: 20px 20px; }
+.canvas { position: relative; min-height: 0; flex: 1; overflow: hidden; overscroll-behavior: contain; touch-action: none; background-color: #dce4e6; background-image: radial-gradient(#b9c6ca 1px, transparent 1px); background-size: 20px 20px; }
 .canvas-message { position: absolute; inset: 50% auto auto 50%; z-index: 2; width: min(90%, 420px); translate: -50% -50%; padding: 16px; border: 1px solid #c2d0d4; border-radius: 10px; background: rgba(248, 250, 249, .96); color: #536872; text-align: center; }
+.pan-hint { position: absolute; z-index: 3; top: 12px; left: 50%; translate: -50%; padding: 7px 10px; border-radius: 999px; background: rgba(20, 42, 56, .82); color: #fff; font-size: 11px; pointer-events: none; }
+.status-legend { position: absolute; z-index: 3; right: 12px; bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px 12px; max-width: calc(100% - 24px); padding: 8px 10px; border: 1px solid rgba(185, 200, 205, .85); border-radius: 9px; background: rgba(248, 250, 249, .9); color: #465d68; font-size: 10px; pointer-events: none; }
+.status-legend span { display: flex; align-items: center; gap: 5px; }
+.status-legend i { width: 9px; height: 9px; border-radius: 50%; background: #173b51; }
+.status-legend .operating { background: #258457; }
+.status-legend .standby { background: #2e75b6; }
+.status-legend .repair { background: #d98216; }
+.status-legend .broken { background: #c43d3d; }
+.status-legend .inactive { background: #66737a; }
 
 .map-wizard { width: min(760px, calc(100% - 32px)); max-height: calc(100dvh - 32px); padding: 0; border: 1px solid #b9c8cd; border-radius: 18px; background: #f8faf9; color: #142a38; box-shadow: 0 30px 90px rgba(20, 42, 56, .3); }
 .map-wizard::backdrop { background: rgba(12, 28, 37, .58); }
@@ -140,6 +152,9 @@ output { text-align: center; color: #526b76; font: 11px ui-monospace, monospace;
 .wizard-done p { color: #536872; line-height: 1.6; }
 .primary { min-height: 42px; padding: 0 18px; border: 1px solid #173b51; border-radius: 9px; background: #173b51; color: #fff; cursor: pointer; font-weight: 750; }
 .primary:disabled, .secondary:disabled { cursor: wait; opacity: .55; }
+.icon-wizard form { min-height: 440px; grid-template-rows: auto auto 1fr auto; }
+.icon-fields { display: grid; grid-template-columns: 1fr 1fr; align-content: start; gap: 18px; }
+.icon-fields .file-drop { grid-column: 1 / -1; min-height: 150px; }
 
 .editor-panel { display: grid; gap: 16px; }
 .editor-panel > .error { position: sticky; z-index: 3; top: -1px; box-shadow: 0 6px 18px rgba(20, 42, 56, .12); }
@@ -168,21 +183,25 @@ output { text-align: center; color: #526b76; font: 11px ui-monospace, monospace;
 .editor-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding-top: 14px; border-top: 1px solid #d5dfe2; }
 
 @media (max-width: 800px) {
-  main { padding: 10px; }
-  .topbar { height: 66px; }
+  main { height: 100dvh; min-height: 520px; padding: 8px; overflow: hidden; }
+  .topbar { height: 62px; }
   .status { display: none; }
-  .workspace { height: auto; min-height: calc(100vh - 86px); grid-template-columns: 1fr; grid-template-rows: auto 560px; overflow: visible; }
-  .sidebar { max-height: none; border-right: 0; border-bottom: 1px solid #d5dfe2; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 18px; overflow: visible; }
-  .marker-list, .equipment-detail { grid-column: 1 / -1; }
+  .workspace, .workspace.menu-closed { height: calc(100dvh - 78px); min-height: 0; grid-template: 1fr / 1fr; }
+  .sidebar, .workspace.menu-closed > .sidebar { position: absolute; z-index: 30; inset: 0 auto 0 0; width: min(88vw, 360px); visibility: visible; border-right: 1px solid #d5dfe2; background: #f8faf9; padding: 18px; transform: translateX(0); transition: transform .2s ease; overflow-y: auto; }
+  .workspace.menu-closed > .sidebar { transform: translateX(-102%); }
+  .sidebar-scrim { position: absolute; z-index: 20; inset: 0; border: 0; background: rgba(12, 28, 37, .38); cursor: pointer; }
+  .workspace.menu-open > .sidebar-scrim { display: block; }
+  .canvas-panel { grid-area: 1 / 1; }
   .instructions { display: none; }
-  .secondary { grid-column: 1 / -1; }
+  .canvas-toolbar { height: 54px; padding: 0 7px; gap: 5px; }
+  .canvas-toolbar .map-title { display: none; }
+  .canvas-toolbar .menu-toggle { margin-right: auto; }
+  .canvas-toolbar .fit { padding-inline: 9px; }
+  .status-legend { right: 7px; bottom: 7px; left: 7px; justify-content: center; }
 }
 
 @media (max-width: 520px) {
-  .sidebar { grid-template-columns: 1fr; }
-  .marker-list, .equipment-detail { grid-column: auto; }
   .coordinates { display: none; }
-  .workspace { grid-template-rows: auto 520px; }
   .equipment-detail { position: fixed; z-index: 20; right: 10px; bottom: 10px; left: 10px; max-height: min(50dvh, 420px); overflow-y: auto; border-color: #aebfc5; box-shadow: 0 -12px 40px rgba(20, 42, 56, .22); }
   h1 { font-size: 23px; }
   .editing-badge { display: none; }
@@ -192,4 +211,6 @@ output { text-align: center; color: #526b76; font: 11px ui-monospace, monospace;
   .wizard-steps span { font-size: 11px; }
   .wizard-grid, .wizard-summary { grid-template-columns: 1fr; }
   .wizard-grid label:nth-child(n+3) { grid-column: auto; }
+  .icon-fields { grid-template-columns: 1fr; }
+  .icon-fields .file-drop { grid-column: auto; }
 }

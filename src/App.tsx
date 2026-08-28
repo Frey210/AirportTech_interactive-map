@@ -2,12 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Konva from 'konva'
 import { Circle, Group, Image as KonvaImage, Layer, Stage, Text } from 'react-konva'
 import {
-  ConflictError, filterMarkers, ForbiddenError, loadBootstrap, loadEditableMaps, loadMapDetail, loadMapEditor, loadMaps, saveMapMarkers, SessionExpiredError,
+  ConflictError, equipmentStatusTone, filterMarkers, ForbiddenError, loadBootstrap, loadEditableMaps, loadMapDetail, loadMapEditor, loadMaps, saveMapMarkers, SessionExpiredError,
   type MapDetail, type MapEditorData, type MapMarker, type MapResolver, type MapSummary, type Session,
 } from './api'
 import { constrainView } from './coordinates'
 import MapEditorPanel from './MapEditorPanel'
 import MapWizard from './MapWizard'
+import IconWizard from './IconWizard'
 
 const MIN_ZOOM = 0.2
 const MAX_ZOOM = 4
@@ -40,8 +41,9 @@ function useRemoteImage(url: string | null) {
 function MarkerNode({ marker, map, selected, draggable = false, onSelect, onMove }: { marker: MapMarker; map: MapSummary; selected: boolean; draggable?: boolean; onSelect: () => void; onMove?: (xRatio: number, yRatio: number) => void }) {
   const icon = useRemoteImage(marker.ikon.file_url)
   const size = Math.max(28, marker.size_ratio * Math.min(map.width_px ?? 0, map.height_px ?? 0))
+  const tone = equipmentStatusTone(marker.peralatan)
   return <Group x={marker.x_ratio * (map.width_px ?? 0)} y={marker.y_ratio * (map.height_px ?? 0)} rotation={marker.rotation_deg} draggable={draggable} onClick={onSelect} onTap={onSelect} onDragEnd={(event) => onMove?.(Math.min(1, Math.max(0, event.target.x() / (map.width_px ?? 1))), Math.min(1, Math.max(0, event.target.y() / (map.height_px ?? 1))))}>
-    <Circle radius={size * .62} fill={selected ? '#f6a45f' : '#173b51'} stroke="#fff" strokeWidth={selected ? 6 : 3} shadowBlur={selected ? 16 : 7} shadowOpacity={.28} />
+    <Circle radius={size * .62} fill={tone.color} stroke={selected ? '#f6a45f' : '#fff'} strokeWidth={selected ? 7 : 3} shadowBlur={selected ? 16 : 7} shadowOpacity={.28} />
     {icon.image
       ? <KonvaImage image={icon.image} x={-size / 2} y={-size / 2} width={size} height={size} />
       : <Text text={marker.peralatan.nama_peralatan.slice(0, 2).toUpperCase()} x={-size / 2} y={-size * .13} width={size} align="center" fill="#fff" fontSize={size * .27} fontStyle="bold" />}
@@ -66,6 +68,8 @@ function App() {
   const [bootstrap, setBootstrap] = useState<BootstrapState>({ status: 'loading' })
   const [retryKey, setRetryKey] = useState(0)
   const [showWizard, setShowWizard] = useState(() => params.get('wizard') === 'baru')
+  const [showIconWizard, setShowIconWizard] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(() => !window.matchMedia('(max-width: 800px)').matches)
   const [editorData, setEditorData] = useState<MapEditorData | null>(null)
   const [editing, setEditing] = useState(false)
   const [draftMarkers, setDraftMarkers] = useState<MapMarker[]>([])
@@ -195,7 +199,7 @@ function App() {
       id, x_ratio: Math.min(1, Math.max(0, (viewport.width / 2 - view.x) / view.scale / detail.peta.width_px)), y_ratio: Math.min(1, Math.max(0, (viewport.height / 2 - view.y) / view.scale / detail.peta.height_px)),
       size_ratio: icon.size_ratio_default, rotation_deg: 0, z_index: draftMarkers.length, catatan: null, lock_version: 0,
       ikon: { id: icon.id, nama: icon.nama, file_url: icon.file_url },
-      peralatan: { id: equipment.id, nama_peralatan: equipment.nama_peralatan, scan_code: equipment.scan_code, kategori: equipment.kategori, fasilitas: null, user_status: '', status: 'Aktif', is_aktif: true, detail_url: `/peralatan/${equipment.id}` },
+      peralatan: { id: equipment.id, nama_peralatan: equipment.nama_peralatan, scan_code: equipment.scan_code, kategori: equipment.kategori, fasilitas: equipment.fasilitas, user_status: equipment.user_status, status: equipment.status, is_aktif: equipment.is_aktif, detail_url: `/peralatan/${equipment.id}` },
     }
     setDraftMarkers((items) => [...items, marker]); setSelectedMarkerId(id); setEditorDirty(true)
   }
@@ -245,10 +249,11 @@ function App() {
 
   if (bootstrap.status !== 'ready') return <StatusScreen state={bootstrap} retry={() => setRetryKey((key) => key + 1)} />
   const { session, resolver } = bootstrap
+  const zoomed = detail ? view.scale > fitView(viewport, detail.peta).scale * 1.08 : false
   return <main>
     <header className="topbar"><div><span className="eyebrow">AIRPORT TECHNOLOGY UPG</span><h1>Peta Interaktif</h1></div><span className="status"><i /> {session.nama_lengkap} · {session.role}</span></header>
-    <section className="workspace" aria-label="Viewer peta peralatan">
-      <aside className="sidebar">
+    <section className={`workspace ${menuOpen ? 'menu-open' : 'menu-closed'}`} aria-label="Viewer peta peralatan">
+      <aside id="map-sidebar" className="sidebar" aria-hidden={!menuOpen} inert={!menuOpen}>
         <div>
           <label className="section-label" htmlFor="map-select">Gedung dan lantai</label>
           <select id="map-select" value={activeMapId ?? ''} onChange={(event) => setActiveMapId(Number(event.target.value) || null)} disabled={mapsStatus !== 'ready' || maps.length === 0}>
@@ -257,6 +262,7 @@ function App() {
           </select>
           {session.capabilities.edit_peta && <button className="new-map" type="button" onClick={() => setShowWizard(true)}>+ Tambah peta</button>}
           {session.capabilities.edit_peta && editorData && !editing && <button className="new-map" type="button" onClick={startEditor}>Edit penanda</button>}
+          {session.capabilities.edit_peta && editorData && !editing && <button className="new-map" type="button" onClick={() => setShowIconWizard(true)}>Kelola ikon</button>}
           {mapsStatus === 'loading' && <p className="muted" role="status">Memuat daftar peta…</p>}
           {mapsStatus === 'error' && <div className="error" role="alert">Daftar peta gagal dimuat.<button onClick={() => setMapsRetry((value) => value + 1)}>Coba lagi</button></div>}
           {mapsStatus === 'ready' && maps.length === 0 && <p className="empty">Belum ada peta yang diterbitkan.</p>}
@@ -292,19 +298,25 @@ function App() {
         {!editing && selectedMarker && <article className="equipment-detail"><button className="close-detail" onClick={() => setSelectedMarkerId(null)} aria-label="Tutup detail peralatan">×</button><p className="section-label">Detail terpilih</p><h2>{selectedMarker.peralatan.nama_peralatan}</h2><p>{selectedMarker.peralatan.kategori || 'Tanpa kategori'} · {selectedMarker.peralatan.fasilitas || 'Tanpa fasilitas'}</p><dl><div><dt>Status</dt><dd>{selectedMarker.peralatan.status}</dd></div><div><dt>User status</dt><dd>{selectedMarker.peralatan.user_status}</dd></div></dl><a className="primary-link" href={selectedMarker.peralatan.detail_url}>Buka detail dan maintenance</a></article>}
       </aside>
 
+      <button type="button" className="sidebar-scrim" onClick={() => setMenuOpen(false)} aria-label="Tutup menu peta" />
+
       <div className="canvas-panel"><div className="canvas-toolbar">
+        <button className="menu-toggle" onClick={() => setMenuOpen((value) => !value)} aria-controls="map-sidebar" aria-expanded={menuOpen} aria-label={menuOpen ? 'Sembunyikan menu peta' : 'Tampilkan menu peta'}>☰</button>
         {detail && <span className="map-title">{detail.peta.gedung.nama} · {detail.peta.nama_lantai}</span>}
         {editing && <strong className="editing-badge">Editor aktif</strong>}
-        <button onClick={() => zoom(1.15)} aria-label="Perbesar peta">+</button><span>{Math.round(view.scale * 100)}%</span><button onClick={() => zoom(1 / 1.15)} aria-label="Perkecil peta">−</button><button className="fit" onClick={() => setView(fitView(viewport, detail?.peta))}>Pas ke layar</button>
+        <button onClick={() => zoom(1.15)} aria-label="Perbesar peta">+</button><span>{Math.round(view.scale * 100)}%</span><button onClick={() => zoom(1 / 1.15)} aria-label="Perkecil peta">−</button><button className="fit" onClick={() => setView(fitView(viewport, detail?.peta))}>Tampilkan penuh</button>
       </div><div className="canvas" ref={containerRef} role="img" aria-label={detail ? `Denah ${detail.peta.nama_peta} dengan ${filteredMarkers.length} penanda peralatan` : 'Area denah peta'}>
         {detailStatus === 'idle' && <div className="canvas-message">Pilih gedung dan lantai untuk membuka denah.</div>}
         {detailStatus === 'loading' && <div className="canvas-message" role="status">Memuat denah dan penanda…</div>}
         {detailStatus === 'error' && <div className="canvas-message error" role="alert">Detail peta gagal dimuat.<button onClick={() => setDetailRetry((value) => value + 1)}>Coba lagi</button></div>}
         {detailStatus === 'ready' && mapImage.error && <div className="canvas-message error" role="alert">Gambar denah tidak tersedia. Data penanda tetap dapat dibuka dari daftar.</div>}
+        {zoomed && <div className="pan-hint" role="status">Geser peta untuk melihat area lain</div>}
+        {detail && <div className="status-legend" aria-label="Warna status penanda"><span><i className="operating" />Beroperasi</span><span><i className="standby" />Standby</span><span><i className="repair" />Perbaikan</span><span><i className="broken" />Rusak</span><span><i className="inactive" />Nonaktif</span></div>}
         {detail && mapImage.image && <Stage width={viewport.width} height={viewport.height} x={view.x} y={view.y} scaleX={view.scale} scaleY={view.scale} draggable dragBoundFunc={(position) => bounded({ ...position, scale: view.scale })} onDragEnd={(event) => { if (event.target === event.currentTarget) setView(bounded({ x: event.target.x(), y: event.target.y(), scale: view.scale })) }} onWheel={handleWheel}><Layer listening={false}><KonvaImage image={mapImage.image} width={detail.peta.width_px ?? mapImage.image.naturalWidth} height={detail.peta.height_px ?? mapImage.image.naturalHeight} shadowBlur={18} shadowOpacity={.18} /></Layer><Layer>{filteredMarkers.map((marker) => <MarkerNode key={marker.id} marker={marker} map={detail.peta} selected={marker.id === selectedMarkerId} draggable={editing} onSelect={() => editing ? setSelectedMarkerId(marker.id) : focusMarker(marker)} onMove={(x_ratio, y_ratio) => updateDraftMarker(marker.id, { x_ratio, y_ratio })} />)}</Layer></Stage>}
       </div></div>
     </section>
     {showWizard && <MapWizard onClose={() => setShowWizard(false)} onCreated={(id) => { setShowWizard(false); setActiveMapId(id); setMapsRetry((value) => value + 1) }} />}
+    {showIconWizard && editorData && <IconWizard data={editorData} onClose={() => setShowIconWizard(false)} onCreated={() => { setShowIconWizard(false); setEditorReload((value) => value + 1) }} />}
   </main>
 }
 

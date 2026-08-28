@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ConflictError, createMapDraft, filterMarkers, ForbiddenError, loadBootstrap, loadMapDetail, loadMaps, saveMapMarkers, SessionExpiredError, type MapMarker } from './api'
+import { ConflictError, createMapDraft, equipmentStatusTone, filterMarkers, ForbiddenError, loadBootstrap, loadMapDetail, loadMaps, saveMapMarkers, SessionExpiredError, uploadMapIcon, type MapMarker } from './api'
 
 const json = (data: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(data), {
   status,
@@ -53,5 +53,21 @@ describe('loadBootstrap', () => {
     const request = vi.fn((_url: string, _init?: RequestInit) => json({ error: { message: 'Versi lama.' }, csrf: { name: 'csrf_test_name', hash: 'baru' } }, 409))
 
     await expect(saveMapMarkers(7, { revisi: 1, checksum_sha256: 'abc', penanda: [], hapus: [] }, request)).rejects.toBeInstanceOf(ConflictError)
+  })
+
+  it('memberi warna penanda sesuai status operasional', () => {
+    expect(equipmentStatusTone({ is_aktif: true, status: 'Aktif', user_status: 'Beroperasi' })).toMatchObject({ color: '#258457' })
+    expect(equipmentStatusTone({ is_aktif: true, status: 'Aktif', user_status: 'Rusak' })).toMatchObject({ color: '#c43d3d' })
+    expect(equipmentStatusTone({ is_aktif: false, status: 'Nonaktif', user_status: 'Beroperasi' })).toMatchObject({ color: '#66737a' })
+  })
+
+  it('mengunggah ikon sebagai FormData beserta CSRF', async () => {
+    await loadBootstrap('', () => json({ data: { id: 1, username: 'admin', nama_lengkap: 'Admin', role: 'admin', capabilities: {}, csrf: { name: 'csrf_test_name', hash: 'aman' } } }))
+    const request = vi.fn((_url: string, _init?: RequestInit) => json({ data: { id: 3, nama: 'CCTV', file_url: '/cctv.png', kategori_peralatan_id: 2, size_ratio_default: .04 } }, 201))
+    await uploadMapIcon({ nama_ikon: 'CCTV', kategori_peralatan_id: 2, size_ratio_default: .04 }, new File(['ikon'], 'cctv.png', { type: 'image/png' }), request)
+    const body = (request.mock.calls[0][1] as RequestInit).body as FormData
+    expect(request.mock.calls[0][0]).toBe('/api/v1/peta/ikon')
+    expect(body.get('nama_ikon')).toBe('CCTV')
+    expect(body.get('csrf_test_name')).toBe('aman')
   })
 })

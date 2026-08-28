@@ -64,7 +64,7 @@ export type MapDetail = {
 }
 
 export type MapIcon = { id: number; kategori_peralatan_id: number | null; nama: string; file_url: string; size_ratio_default: number }
-export type MapEquipment = { id: number; nama_peralatan: string; scan_code: string | null; kategori_peralatan_id: number | null; kategori: string | null; lokasi: string }
+export type MapEquipment = { id: number; nama_peralatan: string; scan_code: string | null; kategori_peralatan_id: number | null; kategori: string | null; fasilitas: string | null; lokasi: string; user_status: string; status: string; is_aktif: boolean }
 export type MapEditorData = MapDetail & { ikon: MapIcon[]; peralatan: MapEquipment[] }
 export type MarkerSaveInput = {
   revisi: number
@@ -81,6 +81,16 @@ export function filterMarkers(markers: MapMarker[], filters: { query: string; ca
     && (!filters.facility || peralatan.fasilitas === filters.facility)
     && (!filters.status || peralatan.status === filters.status)
     && (!filters.userStatus || peralatan.user_status === filters.userStatus))
+}
+
+export function equipmentStatusTone(peralatan: Pick<MapMarker['peralatan'], 'is_aktif' | 'status' | 'user_status'>) {
+  if (!peralatan.is_aktif || peralatan.status.toLocaleLowerCase('id').includes('nonaktif')) return { color: '#66737a', label: 'Nonaktif' }
+  const status = peralatan.user_status.toLocaleLowerCase('id')
+  if (status.includes('rusak')) return { color: '#c43d3d', label: 'Rusak' }
+  if (status.includes('perbaikan')) return { color: '#d98216', label: 'Dalam perbaikan' }
+  if (status.includes('standby')) return { color: '#2e75b6', label: 'Standby' }
+  if (status.includes('operasi')) return { color: '#258457', label: 'Beroperasi' }
+  return { color: '#173b51', label: peralatan.user_status || peralatan.status || 'Status lain' }
 }
 
 type Requester = (input: string, init?: RequestInit) => Promise<Response>
@@ -148,6 +158,15 @@ export const uploadMapImage = (id: number, file: File, request: Requester = fetc
   const body = new FormData()
   body.append('gambar', file)
   return mutate<MapDraft>(`/api/v1/peta/${id}/gambar`, body, request)
+}
+
+export const uploadMapIcon = (input: { nama_ikon: string; kategori_peralatan_id: number | null; size_ratio_default: number }, file: File, request: Requester = fetch) => {
+  const body = new FormData()
+  body.append('nama_ikon', input.nama_ikon)
+  if (input.kategori_peralatan_id !== null) body.append('kategori_peralatan_id', String(input.kategori_peralatan_id))
+  body.append('size_ratio_default', String(input.size_ratio_default))
+  body.append('gambar', file)
+  return mutate<MapIcon>('/api/v1/peta/ikon', body, request)
 }
 
 export const saveMapMarkers = (id: number, input: MarkerSaveInput, request: Requester = fetch) =>
