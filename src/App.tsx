@@ -139,7 +139,7 @@ function App() {
     const observer = new ResizeObserver(([entry]) => setViewport({ width: Math.max(320, Math.floor(entry.contentRect.width)), height: Math.max(420, Math.floor(entry.contentRect.height)) }))
     observer.observe(container)
     return () => observer.disconnect()
-  }, [])
+  }, [bootstrap.status])
   useEffect(() => setView(fitView(viewport, detail?.peta)), [viewport, detail?.peta])
   useEffect(() => {
     const next = new URLSearchParams(window.location.search)
