@@ -95,3 +95,10 @@ y_pixel = y_ratio * tinggi_asli
 - Compose mempublikasikan frontend pada port `8082`. Route Cloudflare Tunnel `^/maps(/.*)?$` harus ditempatkan sebelum route catch-all aplikasi pada port `8081`.
 - Vitest 10 tes, typecheck, build production, validasi Compose, dan smoke test Playwright pada `http://127.0.0.1:4173/maps/` lulus.
 - Image Docker belum dijalankan lokal karena Docker Desktop tidak aktif; build image dan health check container wajib dijalankan di server sebelum route Cloudflare diaktifkan.
+
+## Validasi penerbitan peta — 29 Agustus 2026
+
+- Admin dapat menerbitkan peta berstatus `siap_diedit` setelah minimal satu penanda tersimpan; teknisi tidak dapat menjalankan aksi ini.
+- Service menolak penerbitan kedua pada gedung dan lantai yang sama serta mencatat aksi `TERBITKAN` pada audit.
+- Setelah terbit, peta masuk ke daftar read-only teknisi dan label `(Draft)` hilang dari pemilih admin.
+- PHPUnit: 7 tes dan 44 assertion lulus; Vitest: 13 tes, typecheck, build, dan pemeriksaan Playwright alur publikasi lulus.

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Konva from 'konva'
 import { Circle, Group, Image as KonvaImage, Layer, Stage, Text } from 'react-konva'
 import {
-  ConflictError, equipmentStatusTone, filterMarkers, ForbiddenError, loadBootstrap, loadEditableMaps, loadMapDetail, loadMapEditor, loadMaps, saveMapMarkers, SessionExpiredError,
+  ConflictError, equipmentStatusTone, filterMarkers, ForbiddenError, loadBootstrap, loadEditableMaps, loadMapDetail, loadMapEditor, loadMaps, publishMap, saveMapMarkers, SessionExpiredError,
   type MapDetail, type MapEditorData, type MapMarker, type MapResolver, type MapSummary, type Session,
 } from './api'
 import { constrainView } from './coordinates'
@@ -77,6 +77,8 @@ function App() {
   const [editorDirty, setEditorDirty] = useState(false)
   const [editorSaving, setEditorSaving] = useState(false)
   const [editorError, setEditorError] = useState('')
+  const [publishing, setPublishing] = useState(false)
+  const [publishError, setPublishError] = useState('')
   const [editorReload, setEditorReload] = useState(0)
   const [maps, setMaps] = useState<MapSummary[]>([])
   const [mapsStatus, setMapsStatus] = useState<'loading' | 'ready' | 'error'>('loading')
@@ -226,6 +228,16 @@ function App() {
       setEditorError(reason instanceof ConflictError ? `${reason.message} Perubahan lokal belum ditimpa.` : reason instanceof Error ? reason.message : 'Penanda gagal disimpan.')
     } finally { setEditorSaving(false) }
   }
+  const publish = async () => {
+    if (!editorData || !window.confirm(`Terbitkan ${editorData.peta.nama_peta} agar dapat dilihat pengguna lain?`)) return
+    setPublishing(true); setPublishError('')
+    try {
+      const saved = await publishMap(editorData.peta.id)
+      setEditorData(saved); setDetail(saved); setMapsRetry((value) => value + 1)
+    } catch (reason) {
+      setPublishError(reason instanceof Error ? reason.message : 'Peta gagal diterbitkan.')
+    } finally { setPublishing(false) }
+  }
 
   useEffect(() => {
     if (!editorDirty) return
@@ -263,6 +275,8 @@ function App() {
           {session.capabilities.edit_peta && <button className="new-map" type="button" onClick={() => setShowWizard(true)}>+ Tambah peta</button>}
           {session.capabilities.edit_peta && editorData && !editing && <button className="new-map" type="button" onClick={startEditor}>Edit penanda</button>}
           {session.capabilities.edit_peta && editorData && !editing && <button className="new-map" type="button" onClick={() => setShowIconWizard(true)}>Kelola ikon</button>}
+          {session.capabilities.edit_peta && editorData?.peta.status === 'siap_diedit' && !editing && <button className="new-map" type="button" disabled={publishing} onClick={publish}>{publishing ? 'Menerbitkan…' : 'Terbitkan peta'}</button>}
+          {publishError && <p className="error" role="alert">{publishError}</p>}
           {mapsStatus === 'loading' && <p className="muted" role="status">Memuat daftar peta…</p>}
           {mapsStatus === 'error' && <div className="error" role="alert">Daftar peta gagal dimuat.<button onClick={() => setMapsRetry((value) => value + 1)}>Coba lagi</button></div>}
           {mapsStatus === 'ready' && maps.length === 0 && <p className="empty">Belum ada peta yang diterbitkan.</p>}

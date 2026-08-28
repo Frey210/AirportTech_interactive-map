@@ -2,7 +2,7 @@
 
 **Status:** Diperbarui dan siap eksekusi
 
-**Tanggal:** 27 Agustus 2026
+**Tanggal:** 29 Agustus 2026
 **Acuan:** [`prd.md`](./prd.md)  
 **Frontend:** `D:\Airport Technology UPG\Project\interactive_app`  
 **Backend/API:** `D:\Airport Technology UPG\Project\airport-technology`
@@ -185,9 +185,9 @@ Frontend boleh dikembangkan memakai fixture setelah kontrak API disepakati, teta
 #### Integrasi
 
 - [x] Buat endpoint sementara/read-only `GET /api/v1/me` atau spike setara.
-- [ ] Buktikan request React memakai sesi CodeIgniter pada origin yang sama.
+- [x] Buktikan request React memakai sesi CodeIgniter pada origin yang sama.
 - [x] Buktikan request tanpa sesi memperoleh `401`, bukan redirect HTML.
-- [ ] Verifikasi operasi tulis API dapat menggunakan perlindungan CSRF.
+- [x] Verifikasi operasi tulis API dapat menggunakan perlindungan CSRF.
 
 ### 5.2 Artefak
 
@@ -206,7 +206,7 @@ Frontend boleh dikembangkan memakai fixture setelah kontrak API disepakati, teta
 
 ### 5.4 Kriteria keluar
 
-- [ ] Same-origin session terbukti bekerja.
+- [x] Same-origin session terbukti bekerja.
 - [x] Posisi penanda stabil setelah resize dan zoom.
 - [x] 500 penanda memenuhi target performa awal.
 - [ ] Tidak ada keputusan arsitektur kritis yang belum jelas.
@@ -227,7 +227,7 @@ Frontend boleh dikembangkan memakai fixture setelah kontrak API disepakati, teta
 - [x] Tentukan representasi capability dari `/api/v1/me`.
 - [x] Tetapkan kode error: `UNAUTHENTICATED`, `FORBIDDEN`, `VALIDATION_ERROR`, `NOT_FOUND`, `CONFLICT`, dan `UPLOAD_INVALID`.
 - [x] Tetapkan format tanggal ISO 8601 dan zona waktu.
-- [ ] Tetapkan aturan status warna viewer.
+- [x] Tetapkan aturan status warna viewer.
 - [x] Tetapkan batas upload awal 12 MiB, 8.192 px per sisi, dan 40 megapiksel berdasarkan sampel denah nyata; tinjau ulang setelah uji memori server.
 
 ### 6.2 Kontrak minimum
@@ -320,9 +320,9 @@ Endpoint tulis didefinisikan sekarang tetapi diterapkan setelah jalur read-only 
 
 ### 8.1 Inisialisasi
 
-- [ ] Inisialisasi Vite + React + TypeScript di `interactive_app`.
-- [ ] Buat repository Git terpisah bila belum ada.
-- [ ] Tambahkan `.gitignore` untuk `.env`, `node_modules`, build, screenshot sementara, video test, dan artefak lokal.
+- [x] Inisialisasi Vite + React + TypeScript di `interactive_app`.
+- [x] Buat repository Git terpisah bila belum ada.
+- [x] Tambahkan `.gitignore` untuk `.env`, `node_modules`, build, screenshot sementara, video test, dan artefak lokal.
 - [ ] Tambahkan `.env.example` tanpa rahasia.
 - [ ] Konfigurasikan proxy `/api` dan login CodeIgniter untuk development.
 - [ ] Tambahkan scripts `dev`, `build`, `lint`, `typecheck`, `test`, dan `test:e2e`.
@@ -360,7 +360,7 @@ Struktur boleh tumbuh saat ada isi. Jangan membuat file kosong atau abstraksi sa
 - [x] Tampilkan loading awal, akses ditolak, sesi berakhir, dan error jaringan.
 - [x] Buat header, area navigasi, serta container responsif.
 - [ ] Buat error boundary pada batas halaman utama.
-- [ ] Gunakan capability dari API untuk menampilkan kontrol editor.
+- [x] Gunakan capability dari API untuk menampilkan kontrol editor.
 
 ### 8.5 Navigasi dan deep-link CodeIgniter
 
@@ -384,7 +384,7 @@ Struktur boleh tumbuh saat ada isi. Jangan membuat file kosong atau abstraksi sa
 
 ### 8.7 Kriteria keluar
 
-- [ ] Frontend memakai API nyata.
+- [x] Frontend memakai API nyata.
 - [ ] Build, lint, typecheck, dan test lulus.
 - [ ] Shell dapat dibuka melalui origin/path yang direncanakan.
 
@@ -472,6 +472,7 @@ Pengguna tidak dapat melompat ke editor sebelum gambar tervalidasi. Draft dapat 
 ### 10.2 Backend upload
 
 - [ ] Implementasikan create/update/archive peta. *(create draft selesai; update/archive belum)*
+- [x] Implementasikan penerbitan peta `siap_diedit` menjadi `terbit`, termasuk validasi penanda, konflik lantai, role admin, dan audit.
 - [x] Implementasikan upload gambar dasar.
 - [x] Baca dimensi dari hasil decode server dan simpan sebagai `width_px`/`height_px`; jangan menerima dimensi dari browser sebagai sumber kebenaran.
 - [x] Terima rasio aspek dan resolusi yang bervariasi selama lolos batas byte, sisi maksimum, dan total piksel.
@@ -495,6 +496,7 @@ Pengguna tidak dapat melompat ke editor sebelum gambar tervalidasi. Draft dapat 
 - [x] Tampilkan dimensi pada langkah konfirmasi dan ganti dengan dimensi hasil decode server setelah upload.
 - [x] Progress, error validasi, dan retry upload dengan draft yang tetap tersimpan.
 - [ ] Daftar dan pengelolaan ikon.
+- [x] Tambahkan aksi konfirmasi **Terbitkan peta** bagi admin agar peta tersedia untuk teknisi.
 - [ ] Konfirmasi arsip/nonaktifkan.
 
 ### 10.4 Pengujian
