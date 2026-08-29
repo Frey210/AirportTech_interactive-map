@@ -134,6 +134,7 @@ function App() {
   const containerRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const pinchRef = useRef<{ distance: number; center: { x: number; y: number }; view: View } | null>(null)
+  const focusedDeepLinkRef = useRef('')
   const params = useMemo(() => new URLSearchParams(window.location.search), [])
   const [bootstrap, setBootstrap] = useState<BootstrapState>({ status: 'loading' })
   const [retryKey, setRetryKey] = useState(0)
@@ -164,7 +165,7 @@ function App() {
   const [facility, setFacility] = useState(params.get('fasilitas') ?? '')
   const [status, setStatus] = useState(params.get('status') ?? '')
   const [userStatus, setUserStatus] = useState(params.get('user_status') ?? '')
-  const [viewport, setViewport] = useState({ width: 900, height: 600 })
+  const [viewport, setViewport] = useState({ width: 1, height: 1 })
   const [view, setView] = useState<View>({ x: 0, y: 0, scale: 1 })
   const mapImage = useRemoteImage(detail?.peta.file_url ?? null)
 
@@ -253,6 +254,16 @@ function App() {
     setSelectedMarkerId(marker.id)
     setView(bounded({ x: center.x - marker.x_ratio * detail.peta.width_px * scale, y: center.y - marker.y_ratio * detail.peta.height_px * scale, scale }))
   }, [bounded, detail, viewport])
+
+  useEffect(() => {
+    if (bootstrap.status !== 'ready' || viewport.width <= 1 || !detail) return
+    const equipmentId = bootstrap.resolver?.peralatan.id
+    const marker = detail.penanda.find((item) => item.peralatan.id === equipmentId)
+    const key = marker ? `${detail.peta.id}:${marker.id}` : ''
+    if (!marker || focusedDeepLinkRef.current === key) return
+    focusedDeepLinkRef.current = key
+    focusMarker(marker)
+  }, [bootstrap, detail, focusMarker, viewport])
 
   const startEditor = () => {
     if (!editorData) return

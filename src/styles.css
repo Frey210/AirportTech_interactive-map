@@ -393,9 +393,11 @@ main { min-height: 540px; }
   .scan-link svg { margin: 0; }
   .toolbar-map-select { display: none; }
   .map-search { min-width: 0; }
-  .floating-detail { top: auto; right: 8px; bottom: 70px; left: 8px; width: auto; max-height: min(48dvh,390px); }
+  .floating-detail { top: auto; right: 8px; bottom: 8px; left: 8px; width: auto; max-height: min(48dvh,390px); }
   .status-legend { display: none; }
-  .canvas-controls { right: 8px; bottom: 70px; }
+  .canvas-controls { right: 8px; bottom: 8px; height: 36px; gap: 4px; padding: 3px; }
+  .canvas-controls button { min-width: 28px; width: 28px; height: 28px; }
+  .canvas-controls output { min-width: 34px; }
   .canvas:has(.floating-detail) .canvas-controls { display: none; }
   .editor-mode .workspace { grid-template: 1fr / 1fr; }
   .editor-mode .sidebar { position: absolute; z-index: 20; grid-area: 1/1; width: min(82vw,300px); padding-top: 74px; }
