@@ -382,18 +382,21 @@ main { min-height: 540px; }
 .scan-dialog input { min-width: 0; height: 42px; padding: 0 11px; border: 1px solid var(--ij-line); border-radius: 8px; background: #f5f8f8; }
 
 @media (max-width: 800px) {
-  .workspace,.workspace.menu-closed { height: 100dvh; grid-template: 1fr / 1fr; }
-  .command-rail { display: none; }
+  .workspace,.workspace.menu-closed { height: 100dvh; padding-bottom: calc(58px + env(safe-area-inset-bottom)); grid-template: 1fr / 1fr; }
+  .command-rail { position: absolute; z-index: 31; right: 8px; bottom: max(6px,env(safe-area-inset-bottom)); left: 8px; display: grid; height: 52px; grid-auto-columns: 1fr; grid-auto-flow: column; gap: 2px; padding: 5px; border: 1px solid var(--ij-line); border-radius: 13px; background: rgba(255,255,255,.97); box-shadow: 0 12px 36px rgba(35,54,61,.2); }
+  .command-rail .rail-brand,.command-rail .rail-user { display: none; }
+  .command-rail a,.command-rail button { width: 100%; height: 40px; }
   .sidebar,.workspace.menu-closed > .sidebar { top: 0; width: min(88vw,360px); background: #fff; }
   .canvas-toolbar { top: 8px; right: 8px; left: 8px; gap: 6px; }
   .mobile-menu { display: block; flex: 0 0 42px; }
   .scan-link { width: 42px; padding: 0; justify-content: center; overflow: hidden; font-size: 0; }
-  .scan-link::first-letter { font-size: 18px; }
+  .scan-link svg { margin: 0; }
   .toolbar-map-select { display: none; }
   .map-search { min-width: 0; }
-  .floating-detail { top: auto; right: 8px; bottom: 62px; left: 8px; width: auto; max-height: 46dvh; }
+  .floating-detail { top: auto; right: 8px; bottom: 70px; left: 8px; width: auto; max-height: min(48dvh,390px); }
   .status-legend { display: none; }
-  .canvas-controls { right: 8px; bottom: 8px; }
+  .canvas-controls { right: 8px; bottom: 70px; }
+  .canvas:has(.floating-detail) .canvas-controls { display: none; }
   .editor-mode .workspace { grid-template: 1fr / 1fr; }
   .editor-mode .sidebar { position: absolute; z-index: 20; grid-area: 1/1; width: min(82vw,300px); padding-top: 74px; }
   .editor-mode .canvas-panel { grid-area: 1/1; }

@@ -20,8 +20,12 @@ type BootstrapState =
 
 function fitView(viewport: { width: number; height: number }, map?: MapSummary): View {
   if (!map?.width_px || !map.height_px) return { x: 0, y: 0, scale: 1 }
-  const scale = Math.min(viewport.width / map.width_px, viewport.height / map.height_px) * 0.94
-  return { x: (viewport.width - map.width_px * scale) / 2, y: (viewport.height - map.height_px * scale) / 2, scale }
+  const mobile = viewport.width <= 800
+  const inset = mobile ? { top: 70, right: 14, bottom: 72, left: 14 } : { top: 80, right: 18, bottom: 18, left: 18 }
+  const width = Math.max(1, viewport.width - inset.left - inset.right)
+  const height = Math.max(1, viewport.height - inset.top - inset.bottom)
+  const scale = Math.min(width / map.width_px, height / map.height_px) * 0.96
+  return { x: inset.left + (width - map.width_px * scale) / 2, y: inset.top + (height - map.height_px * scale) / 2, scale }
 }
 
 function useRemoteImage(url: string | null) {
@@ -129,6 +133,7 @@ function ScanDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
 function App() {
   const containerRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
+  const pinchRef = useRef<{ distance: number; center: { x: number; y: number }; view: View } | null>(null)
   const params = useMemo(() => new URLSearchParams(window.location.search), [])
   const [bootstrap, setBootstrap] = useState<BootstrapState>({ status: 'loading' })
   const [retryKey, setRetryKey] = useState(0)
@@ -204,7 +209,7 @@ function App() {
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
-    const observer = new ResizeObserver(([entry]) => setViewport({ width: Math.max(320, Math.floor(entry.contentRect.width)), height: Math.max(420, Math.floor(entry.contentRect.height)) }))
+    const observer = new ResizeObserver(([entry]) => setViewport({ width: Math.max(1, Math.floor(entry.contentRect.width)), height: Math.max(1, Math.floor(entry.contentRect.height)) }))
     observer.observe(container)
     return () => observer.disconnect()
   }, [bootstrap.status])
@@ -243,9 +248,10 @@ function App() {
 
   const focusMarker = useCallback((marker: MapMarker) => {
     if (!detail?.peta.width_px || !detail.peta.height_px) return
-    const scale = Math.min(MAX_ZOOM, Math.max(1, fitView(viewport, detail.peta).scale))
+    const scale = Math.min(MAX_ZOOM, fitView(viewport, detail.peta).scale * 1.8)
+    const center = { x: viewport.width <= 800 ? viewport.width / 2 : (viewport.width - 316) / 2, y: viewport.width <= 800 ? viewport.height * .3 : viewport.height / 2 }
     setSelectedMarkerId(marker.id)
-    setView(bounded({ x: viewport.width / 2 - marker.x_ratio * detail.peta.width_px * scale, y: viewport.height / 2 - marker.y_ratio * detail.peta.height_px * scale, scale }))
+    setView(bounded({ x: center.x - marker.x_ratio * detail.peta.width_px * scale, y: center.y - marker.y_ratio * detail.peta.height_px * scale, scale }))
   }, [bounded, detail, viewport])
 
   const startEditor = () => {
@@ -312,10 +318,6 @@ function App() {
     return () => window.removeEventListener('beforeunload', warn)
   }, [editorDirty])
 
-  useEffect(() => {
-    if (selectedMarker) focusMarker(selectedMarker)
-  }, [detail?.peta.id]) // Fokus deep-link sekali saat peta berubah.
-
   const handleWheel = (event: Konva.KonvaEventObject<WheelEvent>) => {
     event.evt.preventDefault()
     const pointer = event.target.getStage()?.getPointerPosition()
@@ -323,6 +325,29 @@ function App() {
     const scale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, view.scale * (event.evt.deltaY > 0 ? 1 / 1.08 : 1.08)))
     const mapPoint = { x: (pointer.x - view.x) / view.scale, y: (pointer.y - view.y) / view.scale }
     setView(bounded({ x: pointer.x - mapPoint.x * scale, y: pointer.y - mapPoint.y * scale, scale }))
+  }
+
+  const handleTouchStart = (event: Konva.KonvaEventObject<TouchEvent>) => {
+    if (event.evt.touches.length !== 2) return
+    const rect = containerRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const [a, b] = Array.from(event.evt.touches)
+    pinchRef.current = { distance: Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY), center: { x: (a.clientX + b.clientX) / 2 - rect.left, y: (a.clientY + b.clientY) / 2 - rect.top }, view }
+    event.target.getStage()?.stopDrag()
+  }
+
+  const handleTouchMove = (event: Konva.KonvaEventObject<TouchEvent>) => {
+    const start = pinchRef.current
+    if (!start || event.evt.touches.length !== 2) return
+    event.evt.preventDefault()
+    const rect = containerRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const [a, b] = Array.from(event.evt.touches)
+    const distance = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY)
+    const center = { x: (a.clientX + b.clientX) / 2 - rect.left, y: (a.clientY + b.clientY) / 2 - rect.top }
+    const scale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, start.view.scale * distance / Math.max(1, start.distance)))
+    const mapPoint = { x: (start.center.x - start.view.x) / start.view.scale, y: (start.center.y - start.view.y) / start.view.scale }
+    setView(bounded({ x: center.x - mapPoint.x * scale, y: center.y - mapPoint.y * scale, scale }))
   }
 
   if (bootstrap.status !== 'ready') return <StatusScreen state={bootstrap} retry={() => setRetryKey((key) => key + 1)} />
@@ -402,7 +427,7 @@ function App() {
         {!editing && selectedMarker && <article className="equipment-detail floating-detail"><button className="close-detail" onClick={() => setSelectedMarkerId(null)} aria-label="Tutup detail peralatan">×</button><p className="section-label">{equipmentStatusTone(selectedMarker.peralatan).label}</p><h2>{selectedMarker.peralatan.nama_peralatan}</h2><code>{selectedMarker.peralatan.scan_code || 'Tanpa scan code'}</code>{selectedMarker.peralatan.foto_url ? <img className="equipment-photo" src={selectedMarker.peralatan.foto_url} alt={`Foto ${selectedMarker.peralatan.nama_peralatan}`} /> : <div className="photo-placeholder">Belum ada foto peralatan</div>}<dl><div><dt>Kategori</dt><dd>{selectedMarker.peralatan.kategori || '—'}</dd></div><div><dt>Fasilitas</dt><dd>{selectedMarker.peralatan.fasilitas || '—'}</dd></div><div><dt>User status</dt><dd>{selectedMarker.peralatan.user_status}</dd></div><div><dt>IP peralatan</dt><dd>{selectedMarker.peralatan.ip_address || 'Belum diisi'}</dd></div></dl><a className="primary-link" href={selectedMarker.peralatan.detail_url}>Buka detail &amp; maintenance</a></article>}
         <div className="canvas-controls"><button onClick={() => zoom(1 / 1.15)} aria-label="Perkecil peta">−</button><output>{Math.round(view.scale * 100)}%</output><button onClick={() => zoom(1.15)} aria-label="Perbesar peta">+</button><button onClick={() => setView(fitView(viewport, detail?.peta))}>Fit</button></div>
         {detail && <div className="status-legend" aria-label="Warna status penanda"><span><i className="operating" />Beroperasi</span><span><i className="standby" />Standby</span><span><i className="repair" />Perbaikan</span><span><i className="broken" />Rusak</span><span><i className="inactive" />Nonaktif</span></div>}
-        {detail && mapImage.image && <Stage width={viewport.width} height={viewport.height} x={view.x} y={view.y} scaleX={view.scale} scaleY={view.scale} draggable dragBoundFunc={(position) => bounded({ ...position, scale: view.scale })} onDragEnd={(event) => { if (event.target === event.currentTarget) setView(bounded({ x: event.target.x(), y: event.target.y(), scale: view.scale })) }} onWheel={handleWheel}><Layer listening={false}><KonvaImage image={mapImage.image} width={detail.peta.width_px ?? mapImage.image.naturalWidth} height={detail.peta.height_px ?? mapImage.image.naturalHeight} shadowBlur={18} shadowOpacity={.18} /></Layer><Layer>{filteredMarkers.map((marker) => <MarkerNode key={marker.id} marker={marker} map={detail.peta} selected={marker.id === selectedMarkerId} draggable={editing} onSelect={() => editing ? setSelectedMarkerId(marker.id) : focusMarker(marker)} onMove={(x_ratio, y_ratio) => updateDraftMarker(marker.id, { x_ratio, y_ratio })} />)}</Layer></Stage>}
+        {detail && mapImage.image && <Stage width={viewport.width} height={viewport.height} x={view.x} y={view.y} scaleX={view.scale} scaleY={view.scale} draggable dragBoundFunc={(position) => bounded({ ...position, scale: view.scale })} onDragEnd={(event) => { if (event.target === event.currentTarget) setView(bounded({ x: event.target.x(), y: event.target.y(), scale: view.scale })) }} onWheel={handleWheel} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={() => { pinchRef.current = null }}><Layer listening={false}><KonvaImage image={mapImage.image} width={detail.peta.width_px ?? mapImage.image.naturalWidth} height={detail.peta.height_px ?? mapImage.image.naturalHeight} shadowBlur={18} shadowOpacity={.18} /></Layer><Layer>{filteredMarkers.map((marker) => <MarkerNode key={marker.id} marker={marker} map={detail.peta} selected={marker.id === selectedMarkerId} draggable={editing} onSelect={() => editing ? setSelectedMarkerId(marker.id) : focusMarker(marker)} onMove={(x_ratio, y_ratio) => updateDraftMarker(marker.id, { x_ratio, y_ratio })} />)}</Layer></Stage>}
       </div></div>
     </section>
     {showWizard && <MapWizard onClose={() => setShowWizard(false)} onCreated={(id) => { setShowWizard(false); setActiveMapId(id); setMapsRetry((value) => value + 1) }} />}
