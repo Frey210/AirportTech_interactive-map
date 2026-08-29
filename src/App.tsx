@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Konva from 'konva'
 import { Circle, Group, Image as KonvaImage, Layer, Stage, Text } from 'react-konva'
 import {
-  ConflictError, equipmentStatusTone, filterMarkers, ForbiddenError, loadBootstrap, loadEditableMaps, loadMapDetail, loadMapEditor, loadMaps, publishMap, resolveScanCode, saveMapMarkers, SessionExpiredError,
+  ConflictError, equipmentStatusTone, filterMarkers, ForbiddenError, loadBootstrap, loadEditableMaps, loadMapDetail, loadMapEditor, loadMaps, publishMap, rankMarkerMatches, resolveScanCode, saveMapMarkers, SessionExpiredError,
   type MapDetail, type MapEditorData, type MapMarker, type MapResolver, type MapSummary, type Session,
 } from './api'
 import { constrainView } from './coordinates'
@@ -161,6 +161,8 @@ function App() {
   const [detailRetry, setDetailRetry] = useState(0)
   const [selectedMarkerId, setSelectedMarkerId] = useState<number | null>(null)
   const [query, setQuery] = useState(params.get('cari') ?? '')
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchIndex, setSearchIndex] = useState(0)
   const [category, setCategory] = useState(params.get('kategori') ?? '')
   const [facility, setFacility] = useState(params.get('fasilitas') ?? '')
   const [status, setStatus] = useState(params.get('status') ?? '')
@@ -235,6 +237,7 @@ function App() {
   const statuses = useMemo(() => [...new Set((detail?.penanda ?? []).map((item) => item.peralatan.status).filter(Boolean))] as string[], [detail])
   const userStatuses = useMemo(() => [...new Set((detail?.penanda ?? []).map((item) => item.peralatan.user_status).filter(Boolean))], [detail])
   const selectedMarker = displayedMarkers.find((marker) => marker.id === selectedMarkerId) ?? null
+  const searchSuggestions = useMemo(() => rankMarkerMatches(detail?.penanda ?? [], query).slice(0, 8), [detail, query])
 
   const bounded = useCallback((next: View) => detail?.peta.width_px && detail.peta.height_px
     ? constrainView(next, { width: detail.peta.width_px, height: detail.peta.height_px }, viewport)
@@ -255,6 +258,10 @@ function App() {
     setSelectedMarkerId(marker.id)
     setView(bounded({ x: center.x - marker.x_ratio * detail.peta.width_px * scale, y: center.y - marker.y_ratio * detail.peta.height_px * scale, scale }))
   }, [bounded, detail, viewport])
+
+  const chooseSearchResult = (marker: MapMarker) => {
+    setQuery(marker.peralatan.nama_peralatan); setSearchOpen(false); focusMarker(marker)
+  }
 
   useEffect(() => {
     if (bootstrap.status !== 'ready' || viewport.width <= 1 || !detail) return
@@ -285,7 +292,7 @@ function App() {
       id, x_ratio: Math.min(1, Math.max(0, (viewport.width / 2 - view.x) / view.scale / detail.peta.width_px)), y_ratio: Math.min(1, Math.max(0, (viewport.height / 2 - view.y) / view.scale / detail.peta.height_px)),
       size_ratio: icon.size_ratio_default, rotation_deg: 0, z_index: draftMarkers.length, catatan: null, lock_version: 0,
       ikon: { id: icon.id, nama: icon.nama, file_url: icon.file_url },
-      peralatan: { id: equipment.id, nama_peralatan: equipment.nama_peralatan, scan_code: equipment.scan_code, ip_address: equipment.ip_address, kategori: equipment.kategori, fasilitas: equipment.fasilitas, user_status: equipment.user_status, status: equipment.status, is_aktif: equipment.is_aktif, foto_url: equipment.foto_url, detail_url: `/peralatan/${equipment.id}` },
+      peralatan: { id: equipment.id, nama_peralatan: equipment.nama_peralatan, scan_code: equipment.scan_code, ip_address: equipment.ip_address, kategori: equipment.kategori, fasilitas: equipment.fasilitas, lokasi: equipment.lokasi, user_status: equipment.user_status, status: equipment.status, is_aktif: equipment.is_aktif, foto_url: equipment.foto_url, detail_url: `/peralatan/${equipment.id}` },
     }
     setDraftMarkers((items) => [...items, marker]); setSelectedMarkerId(id); setEditorDirty(true)
   }
@@ -426,7 +433,7 @@ function App() {
       <div className="canvas-panel">
       {editing ? <div className="editor-commandbar"><strong>MODE EDITOR</strong><span>{detail?.peta.gedung.nama} / {detail?.peta.nama_lantai}</span><i /> <small>{editorDirty ? 'Perubahan belum disimpan' : 'Semua perubahan tersimpan'}</small><button className="secondary" onClick={closeEditor} disabled={editorSaving}>Tutup editor</button><button className="primary" onClick={saveEditor} disabled={!editorDirty || editorSaving}>{editorSaving ? 'Menyimpan…' : 'Simpan perubahan'}</button></div> : <div className="canvas-toolbar">
         <button className="mobile-menu" onClick={() => setMenuOpen(true)} aria-controls="map-sidebar" aria-label="Tampilkan menu peta">☰</button>
-        <label className="map-search"><span aria-hidden="true">⌕</span><input ref={searchRef} id="equipment-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari peralatan, scan code, atau ruangan…" /></label>
+        <div className="search-shell"><label className="map-search"><span aria-hidden="true">⌕</span><input ref={searchRef} id="equipment-search" type="search" role="combobox" aria-autocomplete="list" aria-controls="equipment-suggestions" aria-expanded={searchOpen && !!query.trim()} value={query} onFocus={() => setSearchOpen(true)} onBlur={() => setSearchOpen(false)} onChange={(event) => { setQuery(event.target.value); setSearchIndex(0); setSearchOpen(true) }} onKeyDown={(event) => { if (!searchSuggestions.length) return; if (event.key === 'ArrowDown') { event.preventDefault(); setSearchIndex((value) => (value + 1) % searchSuggestions.length) } else if (event.key === 'ArrowUp') { event.preventDefault(); setSearchIndex((value) => (value - 1 + searchSuggestions.length) % searchSuggestions.length) } else if (event.key === 'Enter') { event.preventDefault(); chooseSearchResult(searchSuggestions[searchIndex] ?? searchSuggestions[0]) } else if (event.key === 'Escape') setSearchOpen(false) }} placeholder="Cari peralatan, scan code, atau ruangan…" /></label>{searchOpen && !!query.trim() && <div id="equipment-suggestions" className="search-suggestions" role="listbox">{searchSuggestions.map((marker, index) => <button key={marker.id} type="button" role="option" aria-selected={index === searchIndex} onMouseDown={(event) => event.preventDefault()} onClick={() => chooseSearchResult(marker)}><strong>{marker.peralatan.nama_peralatan}</strong><span>{marker.peralatan.scan_code || 'Tanpa scan code'} · {marker.peralatan.lokasi || marker.peralatan.fasilitas || 'Lokasi belum diisi'}</span></button>)}{searchSuggestions.length === 0 && <p>Tidak ada peralatan yang cocok.</p>}</div>}</div>
         <button className="scan-link" type="button" onClick={() => setShowScanner(true)}><RailIcon name="scan" /> Scan QR</button>
         <select className="toolbar-map-select" aria-label="Pilih gedung dan lantai" value={activeMapId ?? ''} onChange={(event) => setActiveMapId(Number(event.target.value) || null)}><option value="">Pilih peta</option>{maps.map((map) => <option key={map.id} value={map.id}>{map.gedung.nama} · {map.nama_lantai}</option>)}</select>
       </div>}

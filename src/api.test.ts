@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ConflictError, createMapDraft, deleteMapIcon, equipmentStatusTone, filterMarkers, ForbiddenError, loadBootstrap, loadMapDetail, loadMaps, publishMap, resolveScanCode, saveMapMarkers, SessionExpiredError, uploadMapIcon, type MapMarker } from './api'
+import { ConflictError, createMapDraft, deleteMapIcon, equipmentStatusTone, filterMarkers, ForbiddenError, loadBootstrap, loadMapDetail, loadMaps, publishMap, rankMarkerMatches, resolveScanCode, saveMapMarkers, SessionExpiredError, uploadMapIcon, type MapMarker } from './api'
 
 const json = (data: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(data), {
   status,
@@ -35,9 +35,17 @@ describe('loadBootstrap', () => {
   })
 
   it('menyaring penanda menurut pencarian dan filter aktif', () => {
-    const marker = { peralatan: { nama_peralatan: 'UPS Ruang Server', scan_code: 'UPS-001', kategori: 'Kelistrikan', fasilitas: 'Terminal', status: 'Normal', user_status: 'Digunakan' } } as MapMarker
+    const marker = { peralatan: { nama_peralatan: 'UPS Ruang Server', scan_code: 'UPS-001', lokasi: 'Ruang Server', kategori: 'Kelistrikan', fasilitas: 'Terminal', status: 'Normal', user_status: 'Digunakan' } } as MapMarker
     expect(filterMarkers([marker], { query: 'ups-001', category: 'Kelistrikan', facility: 'Terminal', status: 'Normal', userStatus: 'Digunakan' })).toEqual([marker])
     expect(filterMarkers([marker], { query: 'radio', category: '', facility: '', status: '', userStatus: '' })).toEqual([])
+  })
+
+  it('mengurutkan saran nama dan scan code sebelum kecocokan ruangan', () => {
+    const markers = [
+      { id: 1, peralatan: { nama_peralatan: 'Monitor CCTV', scan_code: 'UPG-001', lokasi: 'Ruang UPS' } },
+      { id: 2, peralatan: { nama_peralatan: 'UPS Utama', scan_code: 'UPS-001', lokasi: 'Ruang Listrik' } },
+    ] as MapMarker[]
+    expect(rankMarkerMatches(markers, 'ups').map((item) => item.id)).toEqual([2, 1])
   })
 
   it('mengirim token CSRF saat membuat draft peta', async () => {

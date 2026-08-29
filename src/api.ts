@@ -51,6 +51,7 @@ export type MapMarker = {
     ip_address: string | null
     kategori: string | null
     fasilitas: string | null
+    lokasi: string | null
     user_status: string
     status: string
     is_aktif: boolean
@@ -78,11 +79,25 @@ export type MarkerSaveInput = {
 export function filterMarkers(markers: MapMarker[], filters: { query: string; category: string; facility: string; status: string; userStatus: string }) {
   const needle = filters.query.trim().toLocaleLowerCase('id')
   return markers.filter(({ peralatan }) =>
-    (!needle || `${peralatan.nama_peralatan} ${peralatan.scan_code ?? ''}`.toLocaleLowerCase('id').includes(needle))
+    (!needle || markerSearchText(peralatan).includes(needle))
     && (!filters.category || peralatan.kategori === filters.category)
     && (!filters.facility || peralatan.fasilitas === filters.facility)
     && (!filters.status || peralatan.status === filters.status)
     && (!filters.userStatus || peralatan.user_status === filters.userStatus))
+}
+
+const markerSearchText = (item: MapMarker['peralatan']) => [item.nama_peralatan, item.scan_code, item.lokasi, item.kategori, item.fasilitas].filter(Boolean).join(' ').toLocaleLowerCase('id')
+
+export function rankMarkerMatches(markers: MapMarker[], query: string) {
+  const needle = query.trim().toLocaleLowerCase('id')
+  if (!needle) return []
+  return markers.map((marker) => {
+    const name = marker.peralatan.nama_peralatan.toLocaleLowerCase('id')
+    const scan = (marker.peralatan.scan_code ?? '').toLocaleLowerCase('id')
+    const text = markerSearchText(marker.peralatan)
+    const score = name === needle || scan === needle ? 0 : name.startsWith(needle) || scan.startsWith(needle) ? 1 : text.split(/\s+/).some((word) => word.startsWith(needle)) ? 2 : text.includes(needle) ? 3 : 99
+    return { marker, score }
+  }).filter((item) => item.score < 99).sort((a, b) => a.score - b.score || a.marker.peralatan.nama_peralatan.localeCompare(b.marker.peralatan.nama_peralatan, 'id')).map((item) => item.marker)
 }
 
 export function equipmentStatusTone(peralatan: Pick<MapMarker['peralatan'], 'is_aktif' | 'status' | 'user_status'>) {
