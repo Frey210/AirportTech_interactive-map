@@ -44,7 +44,7 @@ function useRemoteImage(url: string | null) {
 
 function MarkerNode({ marker, map, selected, draggable = false, onSelect, onMove }: { marker: MapMarker; map: MapSummary; selected: boolean; draggable?: boolean; onSelect: () => void; onMove?: (xRatio: number, yRatio: number) => void }) {
   const icon = useRemoteImage(marker.ikon.file_url)
-  const size = Math.max(28, marker.size_ratio * Math.min(map.width_px ?? 0, map.height_px ?? 0))
+  const size = Math.max(28, marker.size_ratio * Math.min(map.width_px ?? 0, map.height_px ?? 0)) * (selected ? 1.25 : 1)
   const tone = equipmentStatusTone(marker.peralatan)
   return <Group x={marker.x_ratio * (map.width_px ?? 0)} y={marker.y_ratio * (map.height_px ?? 0)} rotation={marker.rotation_deg} draggable={draggable} onClick={onSelect} onTap={onSelect} onDragEnd={(event) => onMove?.(Math.min(1, Math.max(0, event.target.x() / (map.width_px ?? 1))), Math.min(1, Math.max(0, event.target.y() / (map.height_px ?? 1))))}>
     <Circle radius={size * .62} fill={tone.color} stroke={selected ? '#14757f' : '#fff'} strokeWidth={selected ? 7 : 3} shadowBlur={selected ? 16 : 7} shadowOpacity={.28} />
@@ -249,8 +249,9 @@ function App() {
 
   const focusMarker = useCallback((marker: MapMarker) => {
     if (!detail?.peta.width_px || !detail.peta.height_px) return
-    const scale = Math.min(MAX_ZOOM, fitView(viewport, detail.peta).scale * 1.8)
-    const center = { x: viewport.width <= 800 ? viewport.width / 2 : (viewport.width - 316) / 2, y: viewport.width <= 800 ? viewport.height * .3 : viewport.height / 2 }
+    const mobile = viewport.width <= 800
+    const scale = Math.min(MAX_ZOOM, mobile ? 1 : fitView(viewport, detail.peta).scale * 1.8)
+    const center = { x: mobile ? viewport.width / 2 : (viewport.width - 316) / 2, y: mobile ? viewport.height * .34 : viewport.height / 2 }
     setSelectedMarkerId(marker.id)
     setView(bounded({ x: center.x - marker.x_ratio * detail.peta.width_px * scale, y: center.y - marker.y_ratio * detail.peta.height_px * scale, scale }))
   }, [bounded, detail, viewport])
