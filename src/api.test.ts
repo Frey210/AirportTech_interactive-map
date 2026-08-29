@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ConflictError, createMapDraft, equipmentStatusTone, filterMarkers, ForbiddenError, loadBootstrap, loadMapDetail, loadMaps, publishMap, saveMapMarkers, SessionExpiredError, uploadMapIcon, type MapMarker } from './api'
+import { ConflictError, createMapDraft, equipmentStatusTone, filterMarkers, ForbiddenError, loadBootstrap, loadMapDetail, loadMaps, publishMap, resolveScanCode, saveMapMarkers, SessionExpiredError, uploadMapIcon, type MapMarker } from './api'
 
 const json = (data: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(data), {
   status,
@@ -62,6 +62,15 @@ describe('loadBootstrap', () => {
     await expect(publishMap(7, request)).resolves.toMatchObject({ peta: { status: 'terbit' } })
     expect(request.mock.calls[0][0]).toBe('/api/v1/peta/7/terbitkan')
     expect(JSON.parse((request.mock.calls[0][1] as RequestInit).body as string)).toEqual({ csrf_test_name: 'aman' })
+  })
+
+  it('mengirim Scan Code dari peta tanpa pindah ke dashboard', async () => {
+    await loadBootstrap('', () => json({ data: { id: 1, username: 'admin', nama_lengkap: 'Admin', role: 'admin', capabilities: {}, csrf: { name: 'csrf_test_name', hash: 'aman' } } }))
+    const request = vi.fn((_url: string, _init?: RequestInit) => json({ ok: true, redirect_url: '/peralatan/9', csrf_hash: 'baru' }))
+
+    await expect(resolveScanCode('UPG-009', request)).resolves.toBe('/peralatan/9')
+    expect(request.mock.calls[0][0]).toBe('/scan/resolve')
+    expect(String((request.mock.calls[0][1] as RequestInit).body)).toContain('scan_code=UPG-009')
   })
 
   it('memberi warna penanda sesuai status operasional', () => {

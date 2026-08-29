@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Konva from 'konva'
 import { Circle, Group, Image as KonvaImage, Layer, Stage, Text } from 'react-konva'
 import {
-  ConflictError, equipmentStatusTone, filterMarkers, ForbiddenError, loadBootstrap, loadEditableMaps, loadMapDetail, loadMapEditor, loadMaps, publishMap, saveMapMarkers, SessionExpiredError,
+  ConflictError, equipmentStatusTone, filterMarkers, ForbiddenError, loadBootstrap, loadEditableMaps, loadMapDetail, loadMapEditor, loadMaps, publishMap, resolveScanCode, saveMapMarkers, SessionExpiredError,
   type MapDetail, type MapEditorData, type MapMarker, type MapResolver, type MapSummary, type Session,
 } from './api'
 import { constrainView } from './coordinates'
@@ -62,6 +62,55 @@ function StatusScreen({ state, retry }: { state: Exclude<BootstrapState, { statu
   </section></main>
 }
 
+function RailIcon({ name }: { name: 'map' | 'search' | 'scan' | 'filter' | 'settings' }) {
+  const paths = {
+    map: <><path d="m3 6 5-3 8 3 5-3v15l-5 3-8-3-5 3Z" /><path d="M8 3v15M16 6v15" /></>,
+    search: <><circle cx="11" cy="11" r="6" /><path d="m16 16 4 4" /></>,
+    scan: <><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4" /><path d="M8 12h8" /></>,
+    filter: <><path d="M5 7h14M7 12h10M9 17h6" /></>,
+    settings: <><path d="M12 3 4.5 7.5v9L12 21l7.5-4.5v-9Z" /><circle cx="12" cy="12" r="3" /></>,
+  }
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</g></svg>
+}
+
+function ScanDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [manual, setManual] = useState('')
+  const [message, setMessage] = useState('Arahkan kamera ke QR peralatan.')
+  const [busy, setBusy] = useState(false)
+  const submit = async (code: string) => {
+    if (!code.trim() || busy) return
+    setBusy(true); setMessage('Memproses Scan Code…')
+    try { window.location.href = await resolveScanCode(code.trim()) }
+    catch (error) { setMessage(error instanceof Error ? error.message : 'Scan Code gagal diproses.'); setBusy(false) }
+  }
+  useEffect(() => {
+    if (!open) return
+    let stream: MediaStream | null = null
+    let frame = 0
+    let stopped = false
+    const Detector = (window as unknown as { BarcodeDetector?: new (options: { formats: string[] }) => { detect(source: HTMLVideoElement): Promise<Array<{ rawValue: string }>> } }).BarcodeDetector
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia || !Detector) { setMessage('Pemindai kamera tidak tersedia. Masukkan Scan Code secara manual.'); return }
+    const detector = new Detector({ formats: ['qr_code'] })
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false }).then((value) => {
+      stream = value
+      if (!videoRef.current) return
+      videoRef.current.srcObject = value
+      videoRef.current.play()
+      const detect = async () => {
+        if (stopped || !videoRef.current) return
+        const result = await detector.detect(videoRef.current).catch(() => [])
+        if (result[0]?.rawValue) return submit(result[0].rawValue)
+        frame = requestAnimationFrame(detect)
+      }
+      frame = requestAnimationFrame(detect)
+    }).catch(() => setMessage('Kamera tidak dapat dibuka. Masukkan Scan Code secara manual.'))
+    return () => { stopped = true; cancelAnimationFrame(frame); stream?.getTracks().forEach((track) => track.stop()) }
+  }, [open])
+  if (!open) return null
+  return <div className="scan-backdrop" role="presentation"><section className="scan-dialog" role="dialog" aria-modal="true" aria-labelledby="scan-title"><button className="close-detail" onClick={onClose} aria-label="Tutup pemindai">×</button><span className="section-label">IDENTIFIKASI PERALATAN</span><h2 id="scan-title">Scan QR peralatan</h2><video ref={videoRef} playsInline muted /><p>{message}</p><form onSubmit={(event) => { event.preventDefault(); submit(manual) }}><label htmlFor="manual-scan">Scan Code manual</label><input id="manual-scan" value={manual} onChange={(event) => setManual(event.target.value)} placeholder="Contoh: UPG-EQP-000235" autoComplete="off" /><button className="primary" disabled={busy || !manual.trim()}>{busy ? 'Memproses…' : 'Buka peralatan'}</button></form></section></div>
+}
+
 function App() {
   const containerRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
@@ -70,6 +119,7 @@ function App() {
   const [retryKey, setRetryKey] = useState(0)
   const [showWizard, setShowWizard] = useState(() => params.get('wizard') === 'baru')
   const [showIconWizard, setShowIconWizard] = useState(false)
+  const [showScanner, setShowScanner] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [editorData, setEditorData] = useState<MapEditorData | null>(null)
   const [editing, setEditing] = useState(false)
@@ -202,7 +252,7 @@ function App() {
       id, x_ratio: Math.min(1, Math.max(0, (viewport.width / 2 - view.x) / view.scale / detail.peta.width_px)), y_ratio: Math.min(1, Math.max(0, (viewport.height / 2 - view.y) / view.scale / detail.peta.height_px)),
       size_ratio: icon.size_ratio_default, rotation_deg: 0, z_index: draftMarkers.length, catatan: null, lock_version: 0,
       ikon: { id: icon.id, nama: icon.nama, file_url: icon.file_url },
-      peralatan: { id: equipment.id, nama_peralatan: equipment.nama_peralatan, scan_code: equipment.scan_code, kategori: equipment.kategori, fasilitas: equipment.fasilitas, user_status: equipment.user_status, status: equipment.status, is_aktif: equipment.is_aktif, foto_url: equipment.foto_url, detail_url: `/peralatan/${equipment.id}` },
+      peralatan: { id: equipment.id, nama_peralatan: equipment.nama_peralatan, scan_code: equipment.scan_code, ip_address: equipment.ip_address, kategori: equipment.kategori, fasilitas: equipment.fasilitas, user_status: equipment.user_status, status: equipment.status, is_aktif: equipment.is_aktif, foto_url: equipment.foto_url, detail_url: `/peralatan/${equipment.id}` },
     }
     setDraftMarkers((items) => [...items, marker]); setSelectedMarkerId(id); setEditorDirty(true)
   }
@@ -267,10 +317,11 @@ function App() {
     <section className={`workspace ${menuOpen ? 'menu-open' : 'menu-closed'}`} aria-label="Viewer peta peralatan">
       <nav className="command-rail" aria-label="Navigasi peta">
         <a className="rail-brand" href="/dashboard" aria-label="Kembali ke dashboard">AT</a>
-        <button className="active" type="button" onClick={() => setMenuOpen((value) => !value)} aria-controls="map-sidebar" aria-expanded={menuOpen} aria-label="Buka pengaturan peta">▱</button>
-        <button type="button" onClick={() => searchRef.current?.focus()} aria-label="Cari peralatan">⌕</button>
-        <a href="/dashboard?scan=1" aria-label="Scan QR peralatan">⌗</a>
-        <a href="/dashboard" aria-label="Dashboard utama">▦</a>
+        <button className="active" type="button" onClick={() => setMenuOpen((value) => !value)} aria-controls="map-sidebar" aria-expanded={menuOpen} aria-label="Buka pengaturan peta"><RailIcon name="map" /></button>
+        <button type="button" onClick={() => searchRef.current?.focus()} aria-label="Cari peralatan"><RailIcon name="search" /></button>
+        <button type="button" onClick={() => setShowScanner(true)} aria-label="Scan QR peralatan"><RailIcon name="scan" /></button>
+        <button type="button" onClick={() => setMenuOpen(true)} aria-label="Buka filter peralatan"><RailIcon name="filter" /></button>
+        {session.capabilities.edit_peta && <button type="button" onClick={() => editorData && setShowIconWizard(true)} disabled={!editorData} aria-label="Kelola ikon peta"><RailIcon name="settings" /></button>}
         <span className="rail-user" title={`${session.nama_lengkap} · ${session.role}`}>{session.nama_lengkap.slice(0, 2).toUpperCase()}</span>
       </nav>
       <aside id="map-sidebar" className="sidebar" aria-hidden={!menuOpen} inert={!menuOpen}>
@@ -324,7 +375,7 @@ function App() {
       {editing ? <div className="editor-commandbar"><strong>MODE EDITOR</strong><span>{detail?.peta.gedung.nama} / {detail?.peta.nama_lantai}</span><i /> <small>{editorDirty ? 'Perubahan belum disimpan' : 'Semua perubahan tersimpan'}</small><button className="secondary" onClick={closeEditor} disabled={editorSaving}>Tutup editor</button><button className="primary" onClick={saveEditor} disabled={!editorDirty || editorSaving}>{editorSaving ? 'Menyimpan…' : 'Simpan perubahan'}</button></div> : <div className="canvas-toolbar">
         <button className="mobile-menu" onClick={() => setMenuOpen(true)} aria-controls="map-sidebar" aria-label="Tampilkan menu peta">☰</button>
         <label className="map-search"><span aria-hidden="true">⌕</span><input ref={searchRef} id="equipment-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari peralatan, scan code, atau ruangan…" /></label>
-        <a className="scan-link" href="/dashboard?scan=1">⌗ Scan QR</a>
+        <button className="scan-link" type="button" onClick={() => setShowScanner(true)}><RailIcon name="scan" /> Scan QR</button>
         <select className="toolbar-map-select" aria-label="Pilih gedung dan lantai" value={activeMapId ?? ''} onChange={(event) => setActiveMapId(Number(event.target.value) || null)}><option value="">Pilih peta</option>{maps.map((map) => <option key={map.id} value={map.id}>{map.gedung.nama} · {map.nama_lantai}</option>)}</select>
       </div>}
       <div className="canvas" ref={containerRef} role="img" aria-label={detail ? `Denah ${detail.peta.nama_peta} dengan ${filteredMarkers.length} penanda peralatan` : 'Area denah peta'}>
@@ -333,7 +384,7 @@ function App() {
         {detailStatus === 'error' && <div className="canvas-message error" role="alert">Detail peta gagal dimuat.<button onClick={() => setDetailRetry((value) => value + 1)}>Coba lagi</button></div>}
         {detailStatus === 'ready' && mapImage.error && <div className="canvas-message error" role="alert">Gambar denah tidak tersedia. Data penanda tetap dapat dibuka dari daftar.</div>}
         {zoomed && <div className="pan-hint" role="status">Geser peta untuk melihat area lain</div>}
-        {!editing && selectedMarker && <article className="equipment-detail floating-detail"><button className="close-detail" onClick={() => setSelectedMarkerId(null)} aria-label="Tutup detail peralatan">×</button><p className="section-label">{equipmentStatusTone(selectedMarker.peralatan).label}</p><h2>{selectedMarker.peralatan.nama_peralatan}</h2><code>{selectedMarker.peralatan.scan_code || 'Tanpa scan code'}</code>{selectedMarker.peralatan.foto_url ? <img className="equipment-photo" src={selectedMarker.peralatan.foto_url} alt={`Foto ${selectedMarker.peralatan.nama_peralatan}`} /> : <div className="photo-placeholder">Belum ada foto peralatan</div>}<dl><div><dt>Kategori</dt><dd>{selectedMarker.peralatan.kategori || '—'}</dd></div><div><dt>Fasilitas</dt><dd>{selectedMarker.peralatan.fasilitas || '—'}</dd></div><div><dt>User status</dt><dd>{selectedMarker.peralatan.user_status}</dd></div><div><dt>Koordinat</dt><dd>{(selectedMarker.x_ratio * 100).toFixed(1)} · {(selectedMarker.y_ratio * 100).toFixed(1)}</dd></div></dl><a className="primary-link" href={selectedMarker.peralatan.detail_url}>Buka detail &amp; maintenance</a></article>}
+        {!editing && selectedMarker && <article className="equipment-detail floating-detail"><button className="close-detail" onClick={() => setSelectedMarkerId(null)} aria-label="Tutup detail peralatan">×</button><p className="section-label">{equipmentStatusTone(selectedMarker.peralatan).label}</p><h2>{selectedMarker.peralatan.nama_peralatan}</h2><code>{selectedMarker.peralatan.scan_code || 'Tanpa scan code'}</code>{selectedMarker.peralatan.foto_url ? <img className="equipment-photo" src={selectedMarker.peralatan.foto_url} alt={`Foto ${selectedMarker.peralatan.nama_peralatan}`} /> : <div className="photo-placeholder">Belum ada foto peralatan</div>}<dl><div><dt>Kategori</dt><dd>{selectedMarker.peralatan.kategori || '—'}</dd></div><div><dt>Fasilitas</dt><dd>{selectedMarker.peralatan.fasilitas || '—'}</dd></div><div><dt>User status</dt><dd>{selectedMarker.peralatan.user_status}</dd></div><div><dt>IP peralatan</dt><dd>{selectedMarker.peralatan.ip_address || 'Belum diisi'}</dd></div></dl><a className="primary-link" href={selectedMarker.peralatan.detail_url}>Buka detail &amp; maintenance</a></article>}
         <div className="canvas-controls"><button onClick={() => zoom(1 / 1.15)} aria-label="Perkecil peta">−</button><output>{Math.round(view.scale * 100)}%</output><button onClick={() => zoom(1.15)} aria-label="Perbesar peta">+</button><button onClick={() => setView(fitView(viewport, detail?.peta))}>Fit</button></div>
         {detail && <div className="status-legend" aria-label="Warna status penanda"><span><i className="operating" />Beroperasi</span><span><i className="standby" />Standby</span><span><i className="repair" />Perbaikan</span><span><i className="broken" />Rusak</span><span><i className="inactive" />Nonaktif</span></div>}
         {detail && mapImage.image && <Stage width={viewport.width} height={viewport.height} x={view.x} y={view.y} scaleX={view.scale} scaleY={view.scale} draggable dragBoundFunc={(position) => bounded({ ...position, scale: view.scale })} onDragEnd={(event) => { if (event.target === event.currentTarget) setView(bounded({ x: event.target.x(), y: event.target.y(), scale: view.scale })) }} onWheel={handleWheel}><Layer listening={false}><KonvaImage image={mapImage.image} width={detail.peta.width_px ?? mapImage.image.naturalWidth} height={detail.peta.height_px ?? mapImage.image.naturalHeight} shadowBlur={18} shadowOpacity={.18} /></Layer><Layer>{filteredMarkers.map((marker) => <MarkerNode key={marker.id} marker={marker} map={detail.peta} selected={marker.id === selectedMarkerId} draggable={editing} onSelect={() => editing ? setSelectedMarkerId(marker.id) : focusMarker(marker)} onMove={(x_ratio, y_ratio) => updateDraftMarker(marker.id, { x_ratio, y_ratio })} />)}</Layer></Stage>}
@@ -341,6 +392,7 @@ function App() {
     </section>
     {showWizard && <MapWizard onClose={() => setShowWizard(false)} onCreated={(id) => { setShowWizard(false); setActiveMapId(id); setMapsRetry((value) => value + 1) }} />}
     {showIconWizard && editorData && <IconWizard data={editorData} onClose={() => setShowIconWizard(false)} onCreated={() => { setShowIconWizard(false); setEditorReload((value) => value + 1) }} />}
+    <ScanDialog open={showScanner} onClose={() => setShowScanner(false)} />
   </main>
 }
 

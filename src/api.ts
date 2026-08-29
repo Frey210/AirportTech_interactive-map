@@ -48,6 +48,7 @@ export type MapMarker = {
     id: number
     nama_peralatan: string
     scan_code: string | null
+    ip_address: string | null
     kategori: string | null
     fasilitas: string | null
     user_status: string
@@ -65,7 +66,7 @@ export type MapDetail = {
 }
 
 export type MapIcon = { id: number; kategori_peralatan_id: number | null; nama: string; file_url: string; size_ratio_default: number }
-export type MapEquipment = { id: number; nama_peralatan: string; scan_code: string | null; kategori_peralatan_id: number | null; kategori: string | null; fasilitas: string | null; lokasi: string; user_status: string; status: string; is_aktif: boolean; foto_url: string | null }
+export type MapEquipment = { id: number; nama_peralatan: string; scan_code: string | null; ip_address: string | null; kategori_peralatan_id: number | null; kategori: string | null; fasilitas: string | null; lokasi: string; user_status: string; status: string; is_aktif: boolean; foto_url: string | null }
 export type MapEditorData = MapDetail & { ikon: MapIcon[]; peralatan: MapEquipment[] }
 export type MarkerSaveInput = {
   revisi: number
@@ -175,3 +176,13 @@ export const saveMapMarkers = (id: number, input: MarkerSaveInput, request: Requ
 
 export const publishMap = (id: number, request: Requester = fetch) =>
   mutate<MapEditorData>(`/api/v1/peta/${id}/terbitkan`, {}, request)
+
+export async function resolveScanCode(code: string, request: Requester = fetch) {
+  if (!csrf) throw new Error('Token keamanan belum tersedia. Muat ulang halaman.')
+  const body = new URLSearchParams({ scan_code: code, [csrf.name]: csrf.hash })
+  const response = await request('/scan/resolve', { method: 'POST', credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body })
+  const payload = await response.json() as { ok?: boolean; redirect_url?: string; message?: string; csrf_hash?: string }
+  if (payload.csrf_hash) csrf = { ...csrf, hash: payload.csrf_hash }
+  if (!response.ok || !payload.ok || !payload.redirect_url) throw new Error(payload.message || 'Scan Code tidak ditemukan.')
+  return payload.redirect_url
+}
