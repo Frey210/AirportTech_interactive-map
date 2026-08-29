@@ -75,6 +75,7 @@ function RailIcon({ name }: { name: 'map' | 'search' | 'scan' | 'filter' | 'sett
 
 function ScanDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const [manual, setManual] = useState('')
   const [message, setMessage] = useState('Arahkan kamera ke QR peralatan.')
   const [busy, setBusy] = useState(false)
@@ -89,9 +90,12 @@ function ScanDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
     let stream: MediaStream | null = null
     let frame = 0
     let stopped = false
-    const Detector = (window as unknown as { BarcodeDetector?: new (options: { formats: string[] }) => { detect(source: HTMLVideoElement): Promise<Array<{ rawValue: string }>> } }).BarcodeDetector
-    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia || !Detector) { setMessage('Pemindai kamera tidak tersedia. Masukkan Scan Code secara manual.'); return }
-    const detector = new Detector({ formats: ['qr_code'] })
+    const scanner = window as unknown as {
+      BarcodeDetector?: new (options: { formats: string[] }) => { detect(source: HTMLVideoElement): Promise<Array<{ rawValue: string }>> }
+      jsQR?: (data: Uint8ClampedArray, width: number, height: number) => { data: string } | null
+    }
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia || (!scanner.BarcodeDetector && !scanner.jsQR)) { setMessage('Pemindai kamera tidak tersedia. Masukkan Scan Code secara manual.'); return }
+    const detector = scanner.BarcodeDetector ? new scanner.BarcodeDetector({ formats: ['qr_code'] }) : null
     navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false }).then((value) => {
       stream = value
       if (!videoRef.current) return
@@ -99,8 +103,19 @@ function ScanDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
       videoRef.current.play()
       const detect = async () => {
         if (stopped || !videoRef.current) return
-        const result = await detector.detect(videoRef.current).catch(() => [])
-        if (result[0]?.rawValue) return submit(result[0].rawValue)
+        if (detector) {
+          const result = await detector.detect(videoRef.current).catch(() => [])
+          if (result[0]?.rawValue) return submit(result[0].rawValue)
+        } else if (videoRef.current.readyState >= 2 && canvasRef.current && scanner.jsQR) {
+          const canvas = canvasRef.current
+          canvas.width = videoRef.current.videoWidth
+          canvas.height = videoRef.current.videoHeight
+          const context = canvas.getContext('2d', { willReadFrequently: true })
+          context?.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height)
+          const frameData = context?.getImageData(0, 0, canvas.width, canvas.height)
+          const result = frameData && scanner.jsQR(frameData.data, frameData.width, frameData.height)
+          if (result?.data) return submit(result.data)
+        }
         frame = requestAnimationFrame(detect)
       }
       frame = requestAnimationFrame(detect)
@@ -108,7 +123,7 @@ function ScanDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
     return () => { stopped = true; cancelAnimationFrame(frame); stream?.getTracks().forEach((track) => track.stop()) }
   }, [open])
   if (!open) return null
-  return <div className="scan-backdrop" role="presentation"><section className="scan-dialog" role="dialog" aria-modal="true" aria-labelledby="scan-title"><button className="close-detail" onClick={onClose} aria-label="Tutup pemindai">×</button><span className="section-label">IDENTIFIKASI PERALATAN</span><h2 id="scan-title">Scan QR peralatan</h2><video ref={videoRef} playsInline muted /><p>{message}</p><form onSubmit={(event) => { event.preventDefault(); submit(manual) }}><label htmlFor="manual-scan">Scan Code manual</label><input id="manual-scan" value={manual} onChange={(event) => setManual(event.target.value)} placeholder="Contoh: UPG-EQP-000235" autoComplete="off" /><button className="primary" disabled={busy || !manual.trim()}>{busy ? 'Memproses…' : 'Buka peralatan'}</button></form></section></div>
+  return <div className="scan-backdrop" role="presentation"><section className="scan-dialog" role="dialog" aria-modal="true" aria-labelledby="scan-title"><button className="close-detail" onClick={onClose} aria-label="Tutup pemindai">×</button><span className="section-label">IDENTIFIKASI PERALATAN</span><h2 id="scan-title">Scan QR peralatan</h2><video ref={videoRef} playsInline muted /><canvas ref={canvasRef} hidden /><p>{message}</p><form onSubmit={(event) => { event.preventDefault(); submit(manual) }}><label htmlFor="manual-scan">Scan Code manual</label><input id="manual-scan" value={manual} onChange={(event) => setManual(event.target.value)} placeholder="Contoh: UPG-EQP-000235" autoComplete="off" /><button className="primary" disabled={busy || !manual.trim()}>{busy ? 'Memproses…' : 'Buka peralatan'}</button></form></section></div>
 }
 
 function App() {
