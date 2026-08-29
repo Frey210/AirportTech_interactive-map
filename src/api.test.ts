@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ConflictError, createMapDraft, equipmentStatusTone, filterMarkers, ForbiddenError, loadBootstrap, loadMapDetail, loadMaps, publishMap, resolveScanCode, saveMapMarkers, SessionExpiredError, uploadMapIcon, type MapMarker } from './api'
+import { ConflictError, createMapDraft, deleteMapIcon, equipmentStatusTone, filterMarkers, ForbiddenError, loadBootstrap, loadMapDetail, loadMaps, publishMap, resolveScanCode, saveMapMarkers, SessionExpiredError, uploadMapIcon, type MapMarker } from './api'
 
 const json = (data: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(data), {
   status,
@@ -87,5 +87,13 @@ describe('loadBootstrap', () => {
     expect(request.mock.calls[0][0]).toBe('/api/v1/peta/ikon')
     expect(body.get('nama_ikon')).toBe('CCTV')
     expect(body.get('csrf_test_name')).toBe('aman')
+  })
+
+  it('menghapus ikon melalui endpoint admin dengan CSRF', async () => {
+    await loadBootstrap('', () => json({ data: { id: 1, username: 'admin', nama_lengkap: 'Admin', role: 'admin', capabilities: {}, csrf: { name: 'csrf_test_name', hash: 'aman' } } }))
+    const request = vi.fn((_url: string, _init?: RequestInit) => json({ data: { id: 8 }, csrf: { name: 'csrf_test_name', hash: 'baru' } }))
+
+    await expect(deleteMapIcon(8, request)).resolves.toEqual({ id: 8 })
+    expect(request.mock.calls[0][0]).toBe('/api/v1/peta/ikon/8/hapus')
   })
 })

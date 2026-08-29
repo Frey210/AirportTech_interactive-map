@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { uploadMapIcon, type MapEditorData } from './api'
+import { deleteMapIcon, uploadMapIcon, type MapEditorData } from './api'
 
 export default function IconWizard({ data, onClose, onCreated }: { data: MapEditorData; onClose: () => void; onCreated: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null)
@@ -27,12 +27,19 @@ export default function IconWizard({ data, onClose, onCreated }: { data: MapEdit
       setError(reason instanceof Error ? reason.message : 'Ikon gagal disimpan.')
     } finally { setSaving(false) }
   }
+  const remove = async (id: number, label: string) => {
+    if (!window.confirm(`Hapus ikon "${label}"?`)) return
+    setSaving(true); setError('')
+    try { await deleteMapIcon(id); onCreated() }
+    catch (reason) { setError(reason instanceof Error ? reason.message : 'Ikon gagal dihapus.'); setSaving(false) }
+  }
 
   return <dialog ref={dialog} className="map-wizard icon-wizard" onCancel={(event) => { event.preventDefault(); onClose() }}>
     <form method="dialog" onSubmit={(event) => { event.preventDefault(); void submit() }}>
       <header><div><span className="section-label">PENGELOLAAN IKON</span><h2>Tambah variasi ikon</h2></div><button type="button" className="close-detail" onClick={onClose} aria-label="Tutup pengelolaan ikon">×</button></header>
       {error && <div className="error" role="alert">{error}</div>}
       <div className="wizard-body icon-fields">
+        <section className="saved-icons"><h3>Ikon tersimpan</h3><div>{data.ikon.map((icon) => <article key={icon.id}><img src={icon.file_url} alt="" width="36" height="36" /><span><strong>{icon.nama}</strong><small>{Math.round(icon.size_ratio_default * 1000) / 10}%</small></span><button type="button" className="danger-button" disabled={saving} onClick={() => void remove(icon.id, icon.nama)} aria-label={`Hapus ${icon.nama}`}>Hapus</button></article>)}</div></section>
         <label>Nama ikon<input autoFocus maxLength={100} required value={name} onChange={(event) => setName(event.target.value)} placeholder="Contoh: CCTV dome" /></label>
         <label>Kategori peralatan<select value={category ?? ''} onChange={(event) => setCategory(event.target.value ? Number(event.target.value) : null)}><option value="">Semua kategori</option>{categories.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
         <label>Ukuran default ({size}%)<input type="range" min="0.5" max="20" step="0.5" value={size} onChange={(event) => setSize(Number(event.target.value))} /></label>

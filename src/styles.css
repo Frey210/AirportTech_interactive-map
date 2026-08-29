@@ -155,6 +155,14 @@ output { text-align: center; color: #526b76; font: 11px ui-monospace, monospace;
 .icon-wizard form { min-height: 440px; grid-template-rows: auto auto 1fr auto; }
 .icon-fields { display: grid; grid-template-columns: 1fr 1fr; align-content: start; gap: 18px; }
 .icon-fields .file-drop { grid-column: 1 / -1; min-height: 150px; }
+.saved-icons { grid-column: 1/-1; }
+.saved-icons h3 { margin: 0 0 8px; font-size: 13px; }
+.saved-icons > div { display: grid; max-height: 170px; gap: 6px; overflow-y: auto; }
+.saved-icons article { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 9px; padding: 7px; border: 1px solid #d6dddf; border-radius: 8px; background: #f7f9f9; }
+.saved-icons img { object-fit: contain; }
+.saved-icons span,.saved-icons strong,.saved-icons small { display: block; }
+.saved-icons small { margin-top: 2px; color: #687b83; }
+.saved-icons .danger-button { min-height: 34px; padding: 0 9px; }
 
 .editor-panel { display: grid; gap: 16px; }
 .editor-panel > .error { position: sticky; z-index: 3; top: -1px; box-shadow: 0 6px 18px rgba(20, 42, 56, .12); }
@@ -177,6 +185,10 @@ output { text-align: center; color: #526b76; font: 11px ui-monospace, monospace;
 .icon-palette img { object-fit: contain; }
 .icon-palette span { overflow-wrap: anywhere; font-size: 11px; font-weight: 750; }
 .inspector-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.range-controls { display: grid; gap: 10px; }
+.range-controls label { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px; }
+.range-controls output { min-width: 44px; text-align: right; color: #303739; font-weight: 750; }
+.range-controls input { grid-column: 1/-1; width: 100%; accent-color: var(--ij-teal); }
 .nudge-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .nudge-controls button { min-height: 40px; border: 1px solid #cbd7da; border-radius: 8px; background: #fff; color: #173b51; cursor: pointer; }
 .danger-button { min-height: 42px; border: 1px solid #b94a3d; border-radius: 8px; background: transparent; color: #9b3027; cursor: pointer; font-weight: 750; }

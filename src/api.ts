@@ -171,6 +171,9 @@ export const uploadMapIcon = (input: { nama_ikon: string; kategori_peralatan_id:
   return mutate<MapIcon>('/api/v1/peta/ikon', body, request)
 }
 
+export const deleteMapIcon = (id: number, request: Requester = fetch) =>
+  mutate<{ id: number }>(`/api/v1/peta/ikon/${id}/hapus`, {}, request)
+
 export const saveMapMarkers = (id: number, input: MarkerSaveInput, request: Requester = fetch) =>
   mutate<MapEditorData>(`/api/v1/peta/${id}/penanda`, input, request)
 
