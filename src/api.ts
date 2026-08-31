@@ -76,12 +76,13 @@ export type MarkerSaveInput = {
   hapus: Array<{ id: number; lock_version: number }>
 }
 
-export function filterMarkers(markers: MapMarker[], filters: { query: string; category: string; facility: string; status: string; userStatus: string }) {
+export function filterMarkers(markers: MapMarker[], filters: { query: string; category: string; facility: string; jbrd: string; status: string; userStatus: string }) {
   const needle = filters.query.trim().toLocaleLowerCase('id')
   return markers.filter(({ peralatan }) =>
     (!needle || markerSearchText(peralatan).includes(needle))
     && (!filters.category || peralatan.kategori === filters.category)
     && (!filters.facility || peralatan.fasilitas === filters.facility)
+    && (!filters.jbrd || peralatan.lokasi === filters.jbrd)
     && (!filters.status || peralatan.status === filters.status)
     && (!filters.userStatus || peralatan.user_status === filters.userStatus))
 }

@@ -172,6 +172,7 @@ function App() {
   const [searchIndex, setSearchIndex] = useState(0)
   const [category, setCategory] = useState(params.get('kategori') ?? '')
   const [facility, setFacility] = useState(params.get('fasilitas') ?? '')
+  const [jbrd, setJbrd] = useState(params.get('jbrd') ?? '')
   const [status, setStatus] = useState(params.get('status') ?? '')
   const [userStatus, setUserStatus] = useState(params.get('user_status') ?? '')
   const [viewport, setViewport] = useState({ width: 1, height: 1 })
@@ -230,17 +231,19 @@ function App() {
     query ? next.set('cari', query) : next.delete('cari')
     category ? next.set('kategori', category) : next.delete('kategori')
     facility ? next.set('fasilitas', facility) : next.delete('fasilitas')
+    jbrd ? next.set('jbrd', jbrd) : next.delete('jbrd')
     status ? next.set('status', status) : next.delete('status')
     userStatus ? next.set('user_status', userStatus) : next.delete('user_status')
     window.history.replaceState(null, '', `${window.location.pathname}${next.size ? `?${next}` : ''}`)
-  }, [activeMapId, query, category, facility, status, userStatus])
+  }, [activeMapId, query, category, facility, jbrd, status, userStatus])
 
   const displayedMarkers = editing ? draftMarkers : detail?.penanda ?? []
   const filteredMarkers = useMemo(() => {
-    return editing ? draftMarkers : filterMarkers(detail?.penanda ?? [], { query, category, facility, status, userStatus })
-  }, [detail, draftMarkers, editing, query, category, facility, status, userStatus])
+    return editing ? draftMarkers : filterMarkers(detail?.penanda ?? [], { query, category, facility, jbrd, status, userStatus })
+  }, [detail, draftMarkers, editing, query, category, facility, jbrd, status, userStatus])
   const categories = useMemo(() => [...new Set((detail?.penanda ?? []).map((item) => item.peralatan.kategori).filter(Boolean))] as string[], [detail])
   const facilities = useMemo(() => [...new Set((detail?.penanda ?? []).map((item) => item.peralatan.fasilitas).filter(Boolean))] as string[], [detail])
+  const jbrds = useMemo(() => [...new Set((detail?.penanda ?? []).map((item) => item.peralatan.lokasi).filter((item): item is string => !!item && /jbrd/i.test(item)))].sort((a, b) => a.localeCompare(b, 'id', { numeric: true })), [detail])
   const statuses = useMemo(() => [...new Set((detail?.penanda ?? []).map((item) => item.peralatan.status).filter(Boolean))] as string[], [detail])
   const userStatuses = useMemo(() => [...new Set((detail?.penanda ?? []).map((item) => item.peralatan.user_status).filter(Boolean))], [detail])
   const selectedMarker = displayedMarkers.find((marker) => marker.id === selectedMarkerId) ?? null
@@ -422,9 +425,10 @@ function App() {
             return <button type="button" key={item} onClick={() => setCategory(category === item ? '' : item)} aria-pressed={category === '' || category === item}>{icon && <img src={icon.file_url} alt="" width="24" height="24" />}<span>{item}</span></button>
           })}</div></fieldset>
           <label htmlFor="facility-filter">Fasilitas</label><select id="facility-filter" value={facility} onChange={(event) => setFacility(event.target.value)}><option value="">Semua fasilitas</option>{facilities.map((item) => <option key={item}>{item}</option>)}</select>
+          {jbrds.length > 0 && <><label htmlFor="jbrd-filter">Panel JBRD</label><select id="jbrd-filter" value={jbrd} onChange={(event) => setJbrd(event.target.value)}><option value="">Semua JBRD</option>{jbrds.map((item) => <option key={item}>{item}</option>)}</select></>}
           <label htmlFor="status-filter">Status</label><select id="status-filter" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Semua status</option>{statuses.map((item) => <option key={item}>{item}</option>)}</select>
           <label htmlFor="user-status-filter">User status</label><select id="user-status-filter" value={userStatus} onChange={(event) => setUserStatus(event.target.value)}><option value="">Semua user status</option>{userStatuses.map((item) => <option key={item}>{item}</option>)}</select>
-          <div className="result-summary" role="status"><span>{filteredMarkers.length} peralatan</span><button onClick={() => { setQuery(''); setCategory(''); setFacility(''); setStatus(''); setUserStatus('') }}>Reset filter</button></div>
+          <div className="result-summary" role="status"><span>{filteredMarkers.length} peralatan</span><button onClick={() => { setQuery(''); setCategory(''); setFacility(''); setJbrd(''); setStatus(''); setUserStatus('') }}>Reset filter</button></div>
         </div>}
 
         {!editing && <div className="marker-list" aria-label="Daftar peralatan pada peta">

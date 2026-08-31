@@ -36,8 +36,10 @@ describe('loadBootstrap', () => {
 
   it('menyaring penanda menurut pencarian dan filter aktif', () => {
     const marker = { peralatan: { nama_peralatan: 'UPS Ruang Server', scan_code: 'UPS-001', lokasi: 'Ruang Server', kategori: 'Kelistrikan', fasilitas: 'Terminal', status: 'Normal', user_status: 'Digunakan' } } as MapMarker
-    expect(filterMarkers([marker], { query: 'ups-001', category: 'Kelistrikan', facility: 'Terminal', status: 'Normal', userStatus: 'Digunakan' })).toEqual([marker])
-    expect(filterMarkers([marker], { query: 'radio', category: '', facility: '', status: '', userStatus: '' })).toEqual([])
+    expect(filterMarkers([marker], { query: 'ups-001', category: 'Kelistrikan', facility: 'Terminal', jbrd: '', status: 'Normal', userStatus: 'Digunakan' })).toEqual([marker])
+    expect(filterMarkers([marker], { query: 'radio', category: '', facility: '', jbrd: '', status: '', userStatus: '' })).toEqual([])
+    expect(filterMarkers([marker], { query: '', category: '', facility: '', jbrd: 'Ruang Server', status: '', userStatus: '' })).toEqual([marker])
+    expect(filterMarkers([marker], { query: '', category: '', facility: '', jbrd: 'Panel JBRD 2.3', status: '', userStatus: '' })).toEqual([])
   })
 
   it('mengurutkan saran nama dan scan code sebelum kecocokan ruangan', () => {
