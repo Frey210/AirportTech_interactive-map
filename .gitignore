@@ -11,3 +11,7 @@ graphify-out/
 *.log
 *.tsbuildinfo
 DENAH/
+
+# Referensi desain dan aset lokal, bukan source aplikasi
+Icon Pack/
+Perbaikan UI Aplikasi/
