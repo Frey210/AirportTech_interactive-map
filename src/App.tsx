@@ -2,8 +2,8 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Konva from 'konva'
 import { Circle, Group, Image as KonvaImage, Layer, Stage, Text } from 'react-konva'
 import {
-  ConflictError, deleteMap, equipmentStatusTone, filterMarkers, ForbiddenError, loadBootstrap, loadEditableMaps, loadMapDetail, loadMapEditor, loadMaps, publishMap, rankMarkerMatches, resolveScanCode, saveMapMarkers, SessionExpiredError,
-  type MapDetail, type MapEditorData, type MapMarker, type MapResolver, type MapSummary, type Session,
+  ConflictError, deleteMap, equipmentStatusTone, filterMarkers, ForbiddenError, loadBootstrap, loadEditableMaps, loadMapDetail, loadMapEditor, loadMapIcons, loadMaps, publishMap, rankMarkerMatches, resolveScanCode, saveMapMarkers, SessionExpiredError,
+  type MapDetail, type MapEditorData, type MapIconLibrary, type MapMarker, type MapResolver, type MapSummary, type Session,
 } from './api'
 import { constrainView } from './coordinates'
 import MapEditorPanel from './MapEditorPanel'
@@ -21,7 +21,7 @@ type BootstrapState =
 
 function fitView(viewport: { width: number; height: number }, map?: MapSummary): View {
   if (!map?.width_px || !map.height_px) return { x: 0, y: 0, scale: 1 }
-  const mobile = viewport.width <= 800
+  const mobile = viewport.width <= 900
   const inset = mobile ? { top: 70, right: 14, bottom: 72, left: 14 } : { top: 80, right: 18, bottom: 18, left: 18 }
   const width = Math.max(1, viewport.width - inset.left - inset.right)
   const height = Math.max(1, viewport.height - inset.top - inset.bottom)
@@ -165,6 +165,9 @@ function App() {
   const [retryKey, setRetryKey] = useState(0)
   const [showWizard, setShowWizard] = useState(() => params.get('wizard') === 'baru')
   const [showIconWizard, setShowIconWizard] = useState(false)
+  const [iconLibrary, setIconLibrary] = useState<MapIconLibrary | null>(null)
+  const [iconLibraryLoading, setIconLibraryLoading] = useState(false)
+  const [iconLibraryError, setIconLibraryError] = useState('')
   const [showScanner, setShowScanner] = useState(false)
   const [activePanel, setActivePanel] = useState<'maps' | 'filters' | null>(null)
   const [editorData, setEditorData] = useState<MapEditorData | null>(null)
@@ -225,7 +228,7 @@ function App() {
 
   useEffect(() => {
     if (bootstrap.status !== 'ready') return
-    if (activeMapId === null) { setDetail(null); setDetailStatus('idle'); return }
+    if (activeMapId === null) { setDetail(null); setEditorData(null); setDetailStatus('idle'); return }
     if (maps.find((item) => item.id === activeMapId)?.status === 'draft') { setDetail(null); setEditorData(null); setDetailStatus('idle'); return }
     const controller = new AbortController()
     setDetail(null); setEditorData(null)
@@ -286,7 +289,7 @@ function App() {
 
   const focusMarker = useCallback((marker: MapMarker) => {
     if (!detail?.peta.width_px || !detail.peta.height_px) return
-    const mobile = viewport.width <= 800
+    const mobile = viewport.width <= 900
     const scale = Math.min(MAX_ZOOM, mobile ? 1 : fitView(viewport, detail.peta).scale * 1.8)
     const center = { x: mobile ? viewport.width / 2 : (viewport.width - 316) / 2, y: mobile ? viewport.height * .34 : viewport.height / 2 }
     setSelectedMarkerId(marker.id)
@@ -363,6 +366,14 @@ function App() {
       setPublishError(reason instanceof Error ? reason.message : 'Peta gagal diterbitkan.')
     } finally { setPublishing(false) }
   }
+  const openIconWizard = async () => {
+    setIconLibraryLoading(true); setIconLibraryError('')
+    try {
+      setIconLibrary(await loadMapIcons()); setShowIconWizard(true)
+    } catch (reason) {
+      setIconLibraryError(reason instanceof Error ? reason.message : 'Pustaka ikon gagal dimuat.')
+    } finally { setIconLibraryLoading(false) }
+  }
   const removeMap = async () => {
     if (!deleteTarget) return
     setDeletingMap(true); setDeleteMapError('')
@@ -435,8 +446,9 @@ function App() {
             <option value="">Pilih peta</option>
             {[...new Set(maps.map((map) => map.gedung.id))].map((buildingId) => { const buildingMaps = maps.filter((map) => map.gedung.id === buildingId); return <optgroup key={buildingId} label={buildingMaps[0].gedung.nama}>{buildingMaps.map((map) => <option key={map.id} value={map.id}>{map.nama_lantai} — {map.nama_peta}{map.status !== 'terbit' ? ' (Draft)' : ''}</option>)}</optgroup> })}
           </select>
-          {session.capabilities.edit_peta && <div className="map-actions"><button className="primary" type="button" onClick={() => setShowWizard(true)}>Tambah peta</button>{editorData && !editing && <button className="secondary" type="button" onClick={startEditor}>Edit penanda</button>}{editorData && !editing && <button className="secondary" type="button" onClick={() => setShowIconWizard(true)}>Kelola ikon</button>}{editorData?.peta.status === 'siap_diedit' && !editing && <button className="secondary" type="button" disabled={publishing} onClick={publish}>{publishing ? 'Menerbitkan…' : 'Terbitkan peta'}</button>}{activeMap && !editing && <button className="danger-button" type="button" onClick={() => { setDeleteMapError(''); setDeleteTarget(activeMap) }}>Hapus peta</button>}</div>}
+          {session.capabilities.edit_peta && <div className="map-actions"><button className="primary" type="button" onClick={() => setShowWizard(true)}>Tambah peta</button>{editorData && !editing && <button className="secondary" type="button" onClick={startEditor}>Edit penanda</button>}<button className="secondary" type="button" disabled={iconLibraryLoading} onClick={() => void openIconWizard()}>{iconLibraryLoading ? 'Memuat ikon…' : 'Kelola ikon'}</button>{editorData?.peta.status === 'siap_diedit' && !editing && <button className="secondary" type="button" disabled={publishing} onClick={publish}>{publishing ? 'Menerbitkan…' : 'Terbitkan peta'}</button>}{activeMap && !editing && <button className="danger-button" type="button" onClick={() => { setDeleteMapError(''); setDeleteTarget(activeMap) }}>Hapus peta</button>}</div>}
           {publishError && <p className="error" role="alert">{publishError}</p>}
+          {iconLibraryError && <p className="error" role="alert">{iconLibraryError}</p>}
           {mapsStatus === 'loading' && <p className="muted" role="status">Memuat daftar peta…</p>}
           {mapsStatus === 'error' && <div className="error" role="alert">Daftar peta gagal dimuat.<button onClick={() => setMapsRetry((value) => value + 1)}>Coba lagi</button></div>}
           {mapsStatus === 'ready' && maps.length === 0 && <p className="empty">Belum ada peta yang diterbitkan.</p>}
@@ -492,7 +504,7 @@ function App() {
       </div></div>
     </section>
     {showWizard && <MapWizard onClose={() => setShowWizard(false)} onCreated={(id) => { setShowWizard(false); setActiveMapId(id); setMapsRetry((value) => value + 1) }} />}
-    {showIconWizard && editorData && <IconWizard data={editorData} onClose={() => setShowIconWizard(false)} onCreated={() => { setShowIconWizard(false); setEditorReload((value) => value + 1) }} />}
+    {showIconWizard && iconLibrary && <IconWizard data={iconLibrary} onClose={() => setShowIconWizard(false)} onCreated={() => { setShowIconWizard(false); setIconLibrary(null); setEditorReload((value) => value + 1) }} />}
     <ScanDialog open={showScanner} onClose={() => setShowScanner(false)} />
     <DeleteMapDialog map={deleteTarget} markerCount={deleteTarget && detail && deleteTarget.id === detail.peta.id ? detail.penanda.length : null} busy={deletingMap} error={deleteMapError} onClose={() => !deletingMap && setDeleteTarget(null)} onDelete={removeMap} />
   </main>

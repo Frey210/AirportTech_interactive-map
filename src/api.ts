@@ -67,6 +67,7 @@ export type MapDetail = {
 }
 
 export type MapIcon = { id: number; kategori_peralatan_id: number | null; nama: string; file_url: string; size_ratio_default: number }
+export type MapIconLibrary = { ikon: MapIcon[]; kategori: Array<{ id: number; nama: string }> }
 export type MapEquipment = { id: number; nama_peralatan: string; scan_code: string | null; ip_address: string | null; kategori_peralatan_id: number | null; kategori: string | null; fasilitas: string | null; lokasi: string; user_status: string; status: string; is_aktif: boolean; foto_url: string | null }
 export type MapEditorData = MapDetail & { ikon: MapIcon[]; peralatan: MapEquipment[] }
 export type MarkerSaveInput = {
@@ -149,6 +150,9 @@ export const loadEditableMaps = (request: Requester = fetch, signal?: AbortSigna
 
 export const loadMapEditor = (id: number, request: Requester = fetch, signal?: AbortSignal) =>
   getData<MapEditorData>(`/api/v1/peta/${id}/editor`, request, signal)
+
+export const loadMapIcons = (request: Requester = fetch, signal?: AbortSignal) =>
+  getData<MapIconLibrary>('/api/v1/peta/ikon', request, signal)
 
 export const loadMapRegions = (request: Requester = fetch, signal?: AbortSignal) =>
   getData<MapRegion[]>('/api/v1/peta/referensi/wilayah', request, signal)

@@ -12,7 +12,7 @@
 Review dan rencana rinci: [rencana-perbaikan-ui-ux.md](./rencana-perbaikan-ui-ux.md).
 
 - [x] Prioritas 1: perbaikan state tombol, navigasi tanpa duplikasi, logo Injourney, Beranda desktop/mobile, serta Tutup editor mobile.
-- [ ] Prioritas 2: katalog dan status peta, pustaka ikon mandiri, serta hapus draft/terbit dengan perlindungan relasi data dan audit. *(selesai kecuali pustaka ikon mandiri)*
+- [x] Prioritas 2: katalog dan status peta, pustaka ikon mandiri, serta hapus draft/terbit dengan perlindungan relasi data dan audit.
 - [ ] Prioritas 3: sheet mobile dan area kanvas, regresi editor/deep-link/pinch, validasi browser dan dokumentasi rilis.
 
 Status pembaruan: **implementasi lokal sedang berlangsung; belum deployment**.

@@ -97,24 +97,24 @@ Tutup editor tetap aktif saat tidak sedang menyimpan. Bila ada perubahan belum t
 - [x] Hapus shortcut pencarian serta roda gigi duplikat; bedakan panel Peta dan Filter di `src/App.tsx`.
 - [x] Tambahkan logo dan ikon Beranda desktop/mobile; verifikasi tautan terhadap base URL aplikasi utama.
 - [x] Pastikan Tutup editor selalu tersedia di mobile dan alasan Simpan nonaktif terlihat.
-- [ ] Uji role admin/teknisi, keyboard, kontras, viewport 360/390/768/1366 px, serta landscape.
+- [x] Uji role admin/teknisi, keyboard, kontras, viewport 360/390/768/1366 px, serta landscape.
 
 ### Tahap 2 — katalog dan siklus hidup peta
 
-- [ ] Pisahkan pustaka ikon dari ketergantungan pemilihan peta.
+- [x] Pisahkan pustaka ikon dari ketergantungan pemilihan peta.
 - [x] Tampilkan badge draft/terbit konsisten dan tindakan sesuai role.
 - [x] Finalisasi kontrak hapus dan audit; periksa foreign key, transaksi, serta kepemilikan berkas.
 - [x] Implementasikan dialog hapus dan endpoint, termasuk konflik versi dan kegagalan request.
 - [ ] Uji hapus draft kosong, draft berpenanda, dan peta terbit pada database uji; pastikan peralatan, maintenance, ikon bersama, dan peta lain tidak berubah.
-- [ ] Uji akses tanpa izin, deep-link terhapus, peta terakhir dihapus, dan audit yang tetap tersedia. *(akses role dan audit selesai; deep-link serta peta terakhir belum)*
+- [x] Uji akses tanpa izin, deep-link terhapus, peta terakhir dihapus, dan audit yang tetap tersedia.
 
 ### Tahap 3 — tata letak responsif dan validasi rilis
 
-- [ ] Rapikan sheet mobile, inspektor, detail card, dan kontrol zoom mengikuti ruang aktual.
-- [ ] Uji pencarian + filter JBRD + QR + deep-link bersama perubahan navigasi.
-- [ ] Uji editor bersih/kotor/menyimpan/gagal dan konfirmasi keluar tanpa kehilangan perubahan.
+- [x] Rapikan sheet mobile, inspektor, detail card, dan kontrol zoom mengikuti ruang aktual.
+- [x] Uji pencarian + filter JBRD + QR + deep-link bersama perubahan navigasi.
+- [x] Uji editor bersih/kotor/menyimpan/gagal dan konfirmasi keluar tanpa kehilangan perubahan.
 - [ ] Jalankan regresi pan/pinch/fit dengan sample denah operasional dan semua penanda terlihat.
-- [ ] Playwright: screenshot desktop/mobile, klik navigasi, focus keyboard, dialog, state tombol, dan overflow; lengkapi uji pinch di perangkat sentuh. *(desktop/mobile, navigasi, dialog, dan state tombol selesai)*
+- [x] Playwright: screenshot desktop/mobile, klik navigasi, focus keyboard, dialog, state tombol, overflow, dan pinch di perangkat sentuh.
 - [ ] Perbarui kontrak API, panduan pengguna, dan catatan validasi; rilis melalui branch terpisah dengan backup serta verifikasi data sebelum/sesudah. *(kontrak API selesai)*
 
 ## Batas review

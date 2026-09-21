@@ -91,6 +91,10 @@ Data identitas/status peralatan tetap dibaca dari tabel CodeIgniter dan tidak di
 
 Khusus admin. Mengembalikan katalog peta berstatus `draft`, `siap_diedit`, dan `terbit` agar seluruh siklus hidup peta dapat dikelola. Pengguna non-admin hanya memperoleh daftar peta `terbit` dari endpoint publik.
 
+### `GET /api/v1/peta/ikon`
+
+Khusus admin. Mengembalikan seluruh ikon aktif dan kategori peralatan aktif untuk dialog **Kelola ikon**. Endpoint ini tidak memerlukan peta terpilih, sehingga pustaka ikon tetap dapat dikelola ketika belum ada peta atau ketika peta yang dipilih masih berupa draft tanpa denah.
+
 ### `POST /api/v1/peta/{id}/hapus`
 
 Khusus admin dan wajib memakai sesi serta token CSRF. Payload:
