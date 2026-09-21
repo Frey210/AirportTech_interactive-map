@@ -100,6 +100,7 @@ trap 'docker rm -f "${extractor}" >/dev/null 2>&1 || true' EXIT
 docker cp "${extractor}:/usr/share/nginx/html/maps/." "${staged_dir}/"
 docker rm "${extractor}" >/dev/null
 [[ -s "${staged_dir}/index.html" ]] || die "Artifact frontend tidak memiliki index.html."
+chmod -R a+rX "${staged_dir}"
 
 mv -- "${MAPS_DIR}" "${previous_dir}"
 mv -- "${staged_dir}" "${MAPS_DIR}"
