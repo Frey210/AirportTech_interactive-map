@@ -14,13 +14,13 @@ sudo deploy-airport-maps --current
 
 Setelah deployment, pastikan:
 
-- `http://192.168.10.103:8081/maps/` mengembalikan frontend;
+- `http://192.168.10.70:8081/maps/` mengembalikan frontend;
 - `http://100.90.2.119:8081/maps/` dapat dibuka melalui Tailscale;
 - `https://airport-tech.farlabs.my.id/maps/` dapat dibuka dari internet;
 - request `/api/v1/*` tetap menuju aplikasi CodeIgniter yang sama.
 
 ## Cloudflare Tunnel
 
-Pertahankan satu route `airport-tech.farlabs.my.id` ke `http://192.168.10.103:8081`. Route path khusus `/maps` dan port `8082` tidak diperlukan pada arsitektur production yang aktif.
+Pertahankan satu route `airport-tech.farlabs.my.id` ke `http://192.168.10.70:8081`. Route path khusus `/maps` dan port `8082` tidak diperlukan pada arsitektur production yang aktif.
 
 `compose.yaml` dan image Nginx tetap tersedia untuk pengujian lokal atau jika kelak frontend benar-benar dipisahkan menjadi container tersendiri.

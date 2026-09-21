@@ -11,7 +11,7 @@ readonly DEPLOY_KEY="/opt/airport-deploy/id_ed25519"
 readonly KNOWN_HOSTS="/opt/airport-deploy/known_hosts"
 readonly MAPS_DIR="/opt/airport-stack/maps"
 readonly APP_CONTAINER="airport-technology"
-readonly LAN_URL="http://192.168.10.103:8081/maps/"
+readonly LAN_URL="http://192.168.10.70:8081/maps/"
 readonly TAILSCALE_URL="http://100.90.2.119:8081/maps/"
 
 usage() {
