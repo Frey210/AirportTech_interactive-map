@@ -632,12 +632,12 @@ Pengguna tidak dapat melompat ke editor sebelum gambar tervalidasi. Draft dapat 
 
 ### 13.1 Build dan container
 
-- [ ] Buat build frontend reproducible dengan lockfile.
+- [x] Buat build frontend reproducible dengan lockfile.
 - [x] Gunakan multi-stage Docker build bila frontend menjadi container terpisah.
 - [x] Sajikan frontend pada `/maps` dan API pada `/api/v1` dengan origin yang sama.
 - [x] Pastikan fallback SPA hanya berlaku di `/maps`, bukan mengambil route CodeIgniter.
 - [x] Tambahkan health check frontend/container bila terpisah.
-- [ ] Mount volume aset peta/ikon secara persisten pada backend.
+- [x] Mount volume aset peta/ikon secara persisten pada backend.
 
 ### 13.2 CI
 
@@ -694,7 +694,7 @@ Pengguna tidak dapat melompat ke editor sebelum gambar tervalidasi. Draft dapat 
 
 - [ ] Panduan pengguna viewer.
 - [ ] Panduan admin editor dan upload.
-- [ ] Panduan deployment.
+- [x] Panduan deployment.
 - [ ] Panduan backup/restore.
 - [ ] Daftar keterbatasan MVP.
 - [ ] Catatan versi dalam bahasa Indonesia.
