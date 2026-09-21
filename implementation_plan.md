@@ -7,6 +7,16 @@
 **Frontend:** `D:\Airport Technology UPG\Project\interactive_app`  
 **Backend/API:** `D:\Airport Technology UPG\Project\airport-technology`
 
+## Pembaruan UI/UX — 21 September 2026
+
+Review dan rencana rinci: [rencana-perbaikan-ui-ux.md](./rencana-perbaikan-ui-ux.md).
+
+- [x] Prioritas 1: perbaikan state tombol, navigasi tanpa duplikasi, logo Injourney, Beranda desktop/mobile, serta Tutup editor mobile.
+- [ ] Prioritas 2: katalog dan status peta, pustaka ikon mandiri, serta hapus draft/terbit dengan perlindungan relasi data dan audit. *(selesai kecuali pustaka ikon mandiri)*
+- [ ] Prioritas 3: sheet mobile dan area kanvas, regresi editor/deep-link/pinch, validasi browser dan dokumentasi rilis.
+
+Status pembaruan: **implementasi lokal sedang berlangsung; belum deployment**.
+
 ## 1. Tujuan dokumen
 
 Dokumen ini memecah PRD menjadi tahapan implementasi yang dapat dikerjakan, diuji, dan dirilis secara terpisah. Setiap tahap harus menghasilkan increment yang berjalan dan memiliki kriteria keluar yang terukur.

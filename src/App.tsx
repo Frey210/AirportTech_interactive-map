@@ -2,13 +2,14 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Konva from 'konva'
 import { Circle, Group, Image as KonvaImage, Layer, Stage, Text } from 'react-konva'
 import {
-  ConflictError, equipmentStatusTone, filterMarkers, ForbiddenError, loadBootstrap, loadEditableMaps, loadMapDetail, loadMapEditor, loadMaps, publishMap, rankMarkerMatches, resolveScanCode, saveMapMarkers, SessionExpiredError,
+  ConflictError, deleteMap, equipmentStatusTone, filterMarkers, ForbiddenError, loadBootstrap, loadEditableMaps, loadMapDetail, loadMapEditor, loadMaps, publishMap, rankMarkerMatches, resolveScanCode, saveMapMarkers, SessionExpiredError,
   type MapDetail, type MapEditorData, type MapMarker, type MapResolver, type MapSummary, type Session,
 } from './api'
 import { constrainView } from './coordinates'
 import MapEditorPanel from './MapEditorPanel'
 import MapWizard from './MapWizard'
 import IconWizard from './IconWizard'
+import injourneyLogo from '../logo.png'
 
 const MIN_ZOOM = 0.2
 const MAX_ZOOM = 4
@@ -73,13 +74,12 @@ function StatusScreen({ state, retry }: { state: Exclude<BootstrapState, { statu
   </section></main>
 }
 
-function RailIcon({ name }: { name: 'map' | 'search' | 'scan' | 'filter' | 'settings' }) {
+function RailIcon({ name }: { name: 'home' | 'map' | 'scan' | 'filter' }) {
   const paths = {
+    home: <><path d="m3 11 9-8 9 8" /><path d="M5 10v10h14V10M9 20v-6h6v6" /></>,
     map: <><path d="m3 6 5-3 8 3 5-3v15l-5 3-8-3-5 3Z" /><path d="M8 3v15M16 6v15" /></>,
-    search: <><circle cx="11" cy="11" r="6" /><path d="m16 16 4 4" /></>,
     scan: <><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4" /><path d="M8 12h8" /></>,
     filter: <><path d="M5 7h14M7 12h10M9 17h6" /></>,
-    settings: <><path d="M12 3 4.5 7.5v9L12 21l7.5-4.5v-9Z" /><circle cx="12" cy="12" r="3" /></>,
   }
   return <svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</g></svg>
 }
@@ -137,6 +137,24 @@ function ScanDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   return <div className="scan-backdrop" role="presentation"><section className="scan-dialog" role="dialog" aria-modal="true" aria-labelledby="scan-title"><button className="close-detail" onClick={onClose} aria-label="Tutup pemindai">×</button><span className="section-label">IDENTIFIKASI PERALATAN</span><h2 id="scan-title">Scan QR peralatan</h2><video ref={videoRef} playsInline muted /><canvas ref={canvasRef} hidden /><p>{message}</p><form onSubmit={(event) => { event.preventDefault(); submit(manual) }}><label htmlFor="manual-scan">Scan Code manual</label><input id="manual-scan" value={manual} onChange={(event) => setManual(event.target.value)} placeholder="Contoh: UPG-EQP-000235" autoComplete="off" /><button className="primary" disabled={busy || !manual.trim()}>{busy ? 'Memproses…' : 'Buka peralatan'}</button></form></section></div>
 }
 
+function DeleteMapDialog({ map, markerCount, busy, error, onClose, onDelete }: { map: MapSummary | null; markerCount: number | null; busy: boolean; error: string; onClose: () => void; onDelete: () => void }) {
+  const [confirmation, setConfirmation] = useState('')
+  useEffect(() => setConfirmation(''), [map?.id])
+  if (!map) return null
+  const confirmed = confirmation === map.nama_peta
+  return <div className="scan-backdrop" role="presentation"><section className="delete-map-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-map-title">
+    <button className="close-detail" onClick={onClose} disabled={busy} aria-label="Tutup dialog hapus peta">×</button>
+    <span className="section-label">TINDAKAN PERMANEN</span>
+    <h2 id="delete-map-title">Hapus peta?</h2>
+    <p><strong>{map.nama_peta}</strong> · {map.gedung.nama} · {map.nama_lantai}</p>
+    <p>Peta dan {markerCount ?? 'seluruh'} penempatan peralatannya akan dihapus. Data peralatan, maintenance, ikon bersama, dan peta lain tetap tersimpan.</p>
+    <label htmlFor="delete-map-confirmation">Ketik <strong>{map.nama_peta}</strong> untuk mengonfirmasi</label>
+    <input id="delete-map-confirmation" autoFocus value={confirmation} onChange={(event) => setConfirmation(event.target.value)} disabled={busy} autoComplete="off" />
+    {error && <p className="error" role="alert">{error}</p>}
+    <footer><button type="button" className="secondary" onClick={onClose} disabled={busy}>Batal</button><button type="button" className="danger-solid" onClick={onDelete} disabled={!confirmed || busy}>{busy ? 'Menghapus…' : 'Hapus peta'}</button></footer>
+  </section></div>
+}
+
 function App() {
   const containerRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
@@ -148,7 +166,7 @@ function App() {
   const [showWizard, setShowWizard] = useState(() => params.get('wizard') === 'baru')
   const [showIconWizard, setShowIconWizard] = useState(false)
   const [showScanner, setShowScanner] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [activePanel, setActivePanel] = useState<'maps' | 'filters' | null>(null)
   const [editorData, setEditorData] = useState<MapEditorData | null>(null)
   const [editing, setEditing] = useState(false)
   const [draftMarkers, setDraftMarkers] = useState<MapMarker[]>([])
@@ -158,6 +176,9 @@ function App() {
   const [editorError, setEditorError] = useState('')
   const [publishing, setPublishing] = useState(false)
   const [publishError, setPublishError] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<MapSummary | null>(null)
+  const [deletingMap, setDeletingMap] = useState(false)
+  const [deleteMapError, setDeleteMapError] = useState('')
   const [editorReload, setEditorReload] = useState(0)
   const [maps, setMaps] = useState<MapSummary[]>([])
   const [mapsStatus, setMapsStatus] = useState<'loading' | 'ready' | 'error'>('loading')
@@ -197,7 +218,7 @@ function App() {
     const load = bootstrap.session.capabilities.edit_peta ? loadEditableMaps : loadMaps
     load(fetch, controller.signal).then((items) => {
       setMaps(items); setMapsStatus('ready')
-      setActiveMapId((current) => current ?? bootstrap.resolver?.default_peta_id ?? (bootstrap.resolver && bootstrap.resolver.pilihan.length > 1 ? null : items[0]?.id ?? null))
+      setActiveMapId((current) => current ?? bootstrap.resolver?.default_peta_id ?? (bootstrap.resolver && bootstrap.resolver.pilihan.length > 1 ? null : items.find((item) => item.status !== 'draft')?.id ?? items[0]?.id ?? null))
     }).catch(() => !controller.signal.aborted && setMapsStatus('error'))
     return () => controller.abort()
   }, [bootstrap, mapsRetry])
@@ -205,7 +226,9 @@ function App() {
   useEffect(() => {
     if (bootstrap.status !== 'ready') return
     if (activeMapId === null) { setDetail(null); setDetailStatus('idle'); return }
+    if (maps.find((item) => item.id === activeMapId)?.status === 'draft') { setDetail(null); setEditorData(null); setDetailStatus('idle'); return }
     const controller = new AbortController()
+    setDetail(null); setEditorData(null)
     setDetailStatus('loading')
     const load = bootstrap.session.capabilities.edit_peta ? loadMapEditor : loadMapDetail
     load(activeMapId, fetch, controller.signal).then((value) => {
@@ -215,7 +238,7 @@ function App() {
       setSelectedMarkerId(value.penanda.find((marker) => marker.peralatan.id === equipmentId)?.id ?? null)
     }).catch(() => !controller.signal.aborted && setDetailStatus('error'))
     return () => controller.abort()
-  }, [activeMapId, bootstrap, detailRetry, editorReload])
+  }, [activeMapId, bootstrap, detailRetry, editorReload, maps])
 
   useEffect(() => {
     const container = containerRef.current
@@ -247,6 +270,7 @@ function App() {
   const statuses = useMemo(() => [...new Set((detail?.penanda ?? []).map((item) => item.peralatan.status).filter(Boolean))] as string[], [detail])
   const userStatuses = useMemo(() => [...new Set((detail?.penanda ?? []).map((item) => item.peralatan.user_status).filter(Boolean))], [detail])
   const selectedMarker = displayedMarkers.find((marker) => marker.id === selectedMarkerId) ?? null
+  const activeMap = maps.find((map) => map.id === activeMapId) ?? null
   const searchSuggestions = useMemo(() => rankMarkerMatches(detail?.penanda ?? [], query).slice(0, 8), [detail, query])
 
   const bounded = useCallback((next: View) => detail?.peta.width_px && detail.peta.height_px
@@ -286,7 +310,7 @@ function App() {
   const startEditor = () => {
     if (!editorData) return
     setDraftMarkers(editorData.penanda.map((marker) => ({ ...marker })))
-    setDeletedMarkers([]); setEditorDirty(false); setEditorError(''); setMenuOpen(true); setEditing(true)
+    setDeletedMarkers([]); setEditorDirty(false); setEditorError(''); setActivePanel('maps'); setEditing(true)
   }
   const updateDraftMarker = (id: number, patch: Partial<MapMarker>) => {
     setDraftMarkers((items) => items.map((marker) => marker.id === id ? { ...marker, ...patch } : marker))
@@ -313,7 +337,7 @@ function App() {
   }
   const closeEditor = () => {
     if (editorDirty && !window.confirm('Buang perubahan penanda yang belum disimpan?')) return
-    setEditing(false); setEditorDirty(false); setEditorError(''); setMenuOpen(false)
+    setEditing(false); setEditorDirty(false); setEditorError(''); setActivePanel(null)
   }
   const saveEditor = async () => {
     if (!editorData?.peta.checksum_sha256) return setEditorError('Checksum gambar peta tidak tersedia. Muat ulang editor.')
@@ -338,6 +362,19 @@ function App() {
     } catch (reason) {
       setPublishError(reason instanceof Error ? reason.message : 'Peta gagal diterbitkan.')
     } finally { setPublishing(false) }
+  }
+  const removeMap = async () => {
+    if (!deleteTarget) return
+    setDeletingMap(true); setDeleteMapError('')
+    try {
+      await deleteMap(deleteTarget.id, { revisi: deleteTarget.revisi, nama_peta: deleteTarget.nama_peta })
+      if (activeMapId === deleteTarget.id) {
+        setActiveMapId(null); setDetail(null); setEditorData(null); setSelectedMarkerId(null)
+      }
+      setDeleteTarget(null); setMapsRetry((value) => value + 1)
+    } catch (reason) {
+      setDeleteMapError(reason instanceof Error ? reason.message : 'Peta gagal dihapus.')
+    } finally { setDeletingMap(false) }
   }
 
   useEffect(() => {
@@ -382,44 +419,40 @@ function App() {
   if (bootstrap.status !== 'ready') return <StatusScreen state={bootstrap} retry={() => setRetryKey((key) => key + 1)} />
   const { session, resolver } = bootstrap
   return <main className={editing ? 'editor-mode' : ''}>
-    <section className={`workspace ${menuOpen ? 'menu-open' : 'menu-closed'}`} aria-label="Viewer peta peralatan">
+    <section className={`workspace ${activePanel ? 'menu-open' : 'menu-closed'}`} aria-label="Viewer peta peralatan">
       <nav className="command-rail" aria-label="Navigasi peta">
-        <a className="rail-brand" href="/dashboard" aria-label="Kembali ke dashboard">AT</a>
-        <button className="active" type="button" onClick={() => setMenuOpen((value) => !value)} aria-controls="map-sidebar" aria-expanded={menuOpen} aria-label="Buka pengaturan peta"><RailIcon name="map" /></button>
-        <button type="button" onClick={() => searchRef.current?.focus()} aria-label="Cari peralatan"><RailIcon name="search" /></button>
-        <button type="button" onClick={() => setShowScanner(true)} aria-label="Scan QR peralatan"><RailIcon name="scan" /></button>
-        <button type="button" onClick={() => setMenuOpen(true)} aria-label="Buka filter peralatan"><RailIcon name="filter" /></button>
-        {session.capabilities.edit_peta && <button type="button" onClick={() => editorData && setShowIconWizard(true)} disabled={!editorData} aria-label="Kelola ikon peta"><RailIcon name="settings" /></button>}
+        <a className="rail-home" href="/dashboard" aria-label="Kembali ke aplikasi utama"><RailIcon name="home" /><span>Beranda</span></a>
+        <button className={activePanel === 'maps' ? 'active' : ''} type="button" onClick={() => setActivePanel((value) => value === 'maps' ? null : 'maps')} aria-controls="map-sidebar" aria-expanded={activePanel === 'maps'}><RailIcon name="map" /><span>Peta</span></button>
+        <button type="button" onClick={() => setShowScanner(true)}><RailIcon name="scan" /><span>Scan QR</span></button>
+        <button className={activePanel === 'filters' ? 'active' : ''} type="button" onClick={() => setActivePanel((value) => value === 'filters' ? null : 'filters')} aria-controls="map-sidebar" aria-expanded={activePanel === 'filters'}><RailIcon name="filter" /><span>Filter</span></button>
         <span className="rail-user" title={`${session.nama_lengkap} · ${session.role}`}>{session.nama_lengkap.slice(0, 2).toUpperCase()}</span>
       </nav>
-      <aside id="map-sidebar" className="sidebar" aria-hidden={!menuOpen} inert={!menuOpen}>
-        <div>
+      <aside id="map-sidebar" className="sidebar" aria-hidden={!activePanel} inert={!activePanel}>
+        {(activePanel === 'maps' || editing) && <div className="map-panel">
+          <div className="panel-heading"><div><span className="section-label">NAVIGASI</span><h2>Peta gedung</h2></div><button className="panel-close" onClick={() => setActivePanel(null)} aria-label="Tutup panel peta">×</button></div>
           <label className="section-label" htmlFor="map-select">Gedung dan lantai</label>
           <select id="map-select" value={activeMapId ?? ''} onChange={(event) => setActiveMapId(Number(event.target.value) || null)} disabled={mapsStatus !== 'ready' || maps.length === 0}>
             <option value="">Pilih peta</option>
-            {[...new Set(maps.map((map) => map.gedung.id))].map((buildingId) => { const buildingMaps = maps.filter((map) => map.gedung.id === buildingId); return <optgroup key={buildingId} label={buildingMaps[0].gedung.nama}>{buildingMaps.map((map) => <option key={map.id} value={map.id}>{map.nama_lantai} — {map.nama_peta}{map.status === 'siap_diedit' ? ' (Draft)' : ''}</option>)}</optgroup> })}
+            {[...new Set(maps.map((map) => map.gedung.id))].map((buildingId) => { const buildingMaps = maps.filter((map) => map.gedung.id === buildingId); return <optgroup key={buildingId} label={buildingMaps[0].gedung.nama}>{buildingMaps.map((map) => <option key={map.id} value={map.id}>{map.nama_lantai} — {map.nama_peta}{map.status !== 'terbit' ? ' (Draft)' : ''}</option>)}</optgroup> })}
           </select>
-          {session.capabilities.edit_peta && <button className="new-map" type="button" onClick={() => setShowWizard(true)}>+ Tambah peta</button>}
-          {session.capabilities.edit_peta && editorData && !editing && <button className="new-map" type="button" onClick={startEditor}>Edit penanda</button>}
-          {session.capabilities.edit_peta && editorData && !editing && <button className="new-map" type="button" onClick={() => setShowIconWizard(true)}>Kelola ikon</button>}
-          {session.capabilities.edit_peta && editorData?.peta.status === 'siap_diedit' && !editing && <button className="new-map" type="button" disabled={publishing} onClick={publish}>{publishing ? 'Menerbitkan…' : 'Terbitkan peta'}</button>}
+          {session.capabilities.edit_peta && <div className="map-actions"><button className="primary" type="button" onClick={() => setShowWizard(true)}>Tambah peta</button>{editorData && !editing && <button className="secondary" type="button" onClick={startEditor}>Edit penanda</button>}{editorData && !editing && <button className="secondary" type="button" onClick={() => setShowIconWizard(true)}>Kelola ikon</button>}{editorData?.peta.status === 'siap_diedit' && !editing && <button className="secondary" type="button" disabled={publishing} onClick={publish}>{publishing ? 'Menerbitkan…' : 'Terbitkan peta'}</button>}{activeMap && !editing && <button className="danger-button" type="button" onClick={() => { setDeleteMapError(''); setDeleteTarget(activeMap) }}>Hapus peta</button>}</div>}
           {publishError && <p className="error" role="alert">{publishError}</p>}
           {mapsStatus === 'loading' && <p className="muted" role="status">Memuat daftar peta…</p>}
           {mapsStatus === 'error' && <div className="error" role="alert">Daftar peta gagal dimuat.<button onClick={() => setMapsRetry((value) => value + 1)}>Coba lagi</button></div>}
           {mapsStatus === 'ready' && maps.length === 0 && <p className="empty">Belum ada peta yang diterbitkan.</p>}
-          {maps.length > 0 && <details className="map-catalog"><summary>Lihat katalog peta</summary><div>{maps.map((map) => <button key={map.id} className={activeMapId === map.id ? 'active' : ''} onClick={() => setActiveMapId(map.id)} aria-pressed={activeMapId === map.id}>
+          {maps.length > 0 && <details className="map-catalog" open><summary>Katalog peta</summary><div>{maps.map((map) => <button key={map.id} className={activeMapId === map.id ? 'active' : ''} onClick={() => setActiveMapId(map.id)} aria-pressed={activeMapId === map.id}>
             {map.thumbnail_url && <img src={map.thumbnail_url} alt="" width="64" height="42" loading="lazy" />}
-            <span><strong>{map.nama_peta}</strong><small>{map.gedung.nama} · {map.nama_lantai}{map.diubah_pada ? ` · ${new Intl.DateTimeFormat('id-ID').format(new Date(map.diubah_pada))}` : ''}</small></span>
+            <span><strong>{map.nama_peta}</strong><small>{map.gedung.nama} · {map.nama_lantai}</small><em className={`map-status ${map.status}`}>{map.status === 'terbit' ? 'Terbit' : map.status === 'draft' ? 'Draft tanpa denah' : 'Draft siap diedit'}</em></span>
           </button>)}</div></details>}
-        </div>
+        </div>}
 
         {editing && editorData && <MapEditorPanel data={editorData} markers={draftMarkers} selectedId={selectedMarkerId} dirty={editorDirty} saving={editorSaving} error={editorError} onSelect={setSelectedMarkerId} onAdd={addDraftMarker} onUpdate={updateDraftMarker} onDelete={deleteDraftMarker} onSave={saveEditor} onCancel={closeEditor} onReload={() => setEditorReload((value) => value + 1)} />}
 
-        {!editing && resolver && <div className="resolver-state" role="status"><p className="section-label">Hasil dari detail peralatan</p><strong>{resolver.peralatan.nama_peralatan}</strong>
+        {!editing && activePanel === 'filters' && resolver && <div className="resolver-state" role="status"><p className="section-label">Hasil dari detail peralatan</p><strong>{resolver.peralatan.nama_peralatan}</strong>
           {resolver.pilihan.length === 0 ? <small>Peralatan ini belum ditempatkan pada peta.</small> : resolver.pilihan.length === 1 ? <small>Ditemukan di {resolver.pilihan[0].nama_peta}.</small> : <><small>Pilih salah satu lokasi peralatan:</small><div className="resolver-options">{resolver.pilihan.map((map) => <button key={map.id} onClick={() => setActiveMapId(map.id)} aria-pressed={activeMapId === map.id}>{map.gedung.nama} · {map.nama_lantai}</button>)}</div></>}
         </div>}
 
-        {!editing && detail && <div className="filters">
+        {!editing && activePanel === 'filters' && detail && <div className="filters">
           <fieldset className="category-filter"><legend>Kategori peralatan</legend><div className="filter-actions"><button type="button" onClick={() => setCategory('')}>Pilih semua</button><button type="button" onClick={() => setCategory('__none__')}>Bersihkan</button></div><div className="category-options">{categories.map((item) => {
             const icon = detail.penanda.find((marker) => marker.peralatan.kategori === item)?.ikon
             return <button type="button" key={item} onClick={() => setCategory(category === item ? '' : item)} aria-pressed={category === '' || category === item}>{icon && <img src={icon.file_url} alt="" width="24" height="24" />}<span>{item}</span></button>
@@ -431,24 +464,24 @@ function App() {
           <div className="result-summary" role="status"><span>{filteredMarkers.length} peralatan</span><button onClick={() => { setQuery(''); setCategory(''); setFacility(''); setJbrd(''); setStatus(''); setUserStatus('') }}>Reset filter</button></div>
         </div>}
 
-        {!editing && <div className="marker-list" aria-label="Daftar peralatan pada peta">
+        {!editing && activePanel === 'filters' && <div className="marker-list" aria-label="Daftar peralatan pada peta">
           {filteredMarkers.map((marker) => <button key={marker.id} className={selectedMarkerId === marker.id ? 'active' : ''} onClick={() => focusMarker(marker)} aria-pressed={selectedMarkerId === marker.id}><strong>{marker.peralatan.nama_peralatan}</strong><small>{marker.peralatan.scan_code || 'Tanpa scan code'} · {marker.peralatan.status}</small></button>)}
           {detail && filteredMarkers.length === 0 && <p className="empty">Tidak ada peralatan yang cocok. Ubah pencarian atau reset filter.</p>}
         </div>}
 
       </aside>
 
-      <button type="button" className="sidebar-scrim" onClick={() => setMenuOpen(false)} aria-label="Tutup menu peta" />
+      <button type="button" className="sidebar-scrim" onClick={() => setActivePanel(null)} aria-label="Tutup menu peta" />
 
       <div className="canvas-panel">
-      {editing ? <div className="editor-commandbar"><strong>MODE EDITOR</strong><span>{detail?.peta.gedung.nama} / {detail?.peta.nama_lantai}</span><i /> <small>{editorDirty ? 'Perubahan belum disimpan' : 'Semua perubahan tersimpan'}</small><button className="secondary" onClick={closeEditor} disabled={editorSaving}>Tutup editor</button><button className="primary" onClick={saveEditor} disabled={!editorDirty || editorSaving}>{editorSaving ? 'Menyimpan…' : 'Simpan perubahan'}</button></div> : <div className="canvas-toolbar">
-        <button className="mobile-menu" onClick={() => setMenuOpen(true)} aria-controls="map-sidebar" aria-label="Tampilkan menu peta">☰</button>
+      {!editing && <a className="app-logo" href="/dashboard" aria-label="Kembali ke dashboard Airport Technology"><img src={injourneyLogo} alt="Injourney" /></a>}
+      {editing ? <div className="editor-commandbar"><strong>MODE EDITOR</strong><button className="secondary editor-panel-toggle" onClick={() => setActivePanel((value) => value === 'maps' ? null : 'maps')} aria-controls="map-sidebar" aria-expanded={activePanel === 'maps'}>Daftar</button><span>{detail?.peta.gedung.nama} / {detail?.peta.nama_lantai}</span><i /> <small>{editorDirty ? 'Perubahan belum disimpan' : 'Belum ada perubahan'}</small><button className="secondary" onClick={closeEditor} disabled={editorSaving}>Tutup editor</button><button className="primary" onClick={saveEditor} disabled={!editorDirty || editorSaving} title={!editorDirty ? 'Ubah penanda terlebih dahulu' : undefined}>{editorSaving ? 'Menyimpan…' : 'Simpan perubahan'}</button></div> : <div className="canvas-toolbar">
         <div className="search-shell"><label className="map-search"><span aria-hidden="true">⌕</span><input ref={searchRef} id="equipment-search" type="search" role="combobox" aria-autocomplete="list" aria-controls="equipment-suggestions" aria-expanded={searchOpen && !!query.trim()} value={query} onFocus={() => setSearchOpen(true)} onBlur={() => setSearchOpen(false)} onChange={(event) => { setQuery(event.target.value); setSearchIndex(0); setSearchOpen(true) }} onKeyDown={(event) => { if (!searchSuggestions.length) return; if (event.key === 'ArrowDown') { event.preventDefault(); setSearchIndex((value) => (value + 1) % searchSuggestions.length) } else if (event.key === 'ArrowUp') { event.preventDefault(); setSearchIndex((value) => (value - 1 + searchSuggestions.length) % searchSuggestions.length) } else if (event.key === 'Enter') { event.preventDefault(); chooseSearchResult(searchSuggestions[searchIndex] ?? searchSuggestions[0]) } else if (event.key === 'Escape') setSearchOpen(false) }} placeholder="Cari peralatan, scan code, atau ruangan…" /></label>{searchOpen && !!query.trim() && <div id="equipment-suggestions" className="search-suggestions" role="listbox">{searchSuggestions.map((marker, index) => <button key={marker.id} type="button" role="option" aria-selected={index === searchIndex} onMouseDown={(event) => event.preventDefault()} onClick={() => chooseSearchResult(marker)}><strong>{marker.peralatan.nama_peralatan}</strong><span>{marker.peralatan.scan_code || 'Tanpa scan code'} · {marker.peralatan.lokasi || marker.peralatan.fasilitas || 'Lokasi belum diisi'}</span></button>)}{searchSuggestions.length === 0 && <p>Tidak ada peralatan yang cocok.</p>}</div>}</div>
         <button className="scan-link" type="button" onClick={() => setShowScanner(true)}><RailIcon name="scan" /> Scan QR</button>
         <select className="toolbar-map-select" aria-label="Pilih gedung dan lantai" value={activeMapId ?? ''} onChange={(event) => setActiveMapId(Number(event.target.value) || null)}><option value="">Pilih peta</option>{maps.map((map) => <option key={map.id} value={map.id}>{map.gedung.nama} · {map.nama_lantai}</option>)}</select>
       </div>}
       <div className="canvas" ref={containerRef} role="img" aria-label={detail ? `Denah ${detail.peta.nama_peta} dengan ${filteredMarkers.length} penanda peralatan` : 'Area denah peta'}>
-        {detailStatus === 'idle' && <div className="canvas-message">Pilih gedung dan lantai untuk membuka denah.</div>}
+        {detailStatus === 'idle' && <div className="canvas-message">{activeMap?.status === 'draft' ? 'Draft ini belum memiliki denah. Anda dapat menghapusnya atau menyelesaikan unggahan melalui Tambah peta.' : 'Pilih gedung dan lantai untuk membuka denah.'}</div>}
         {detailStatus === 'loading' && <div className="canvas-message" role="status">Memuat denah dan penanda…</div>}
         {detailStatus === 'error' && <div className="canvas-message error" role="alert">Detail peta gagal dimuat.<button onClick={() => setDetailRetry((value) => value + 1)}>Coba lagi</button></div>}
         {detailStatus === 'ready' && mapImage.error && <div className="canvas-message error" role="alert">Gambar denah tidak tersedia. Data penanda tetap dapat dibuka dari daftar.</div>}
@@ -461,6 +494,7 @@ function App() {
     {showWizard && <MapWizard onClose={() => setShowWizard(false)} onCreated={(id) => { setShowWizard(false); setActiveMapId(id); setMapsRetry((value) => value + 1) }} />}
     {showIconWizard && editorData && <IconWizard data={editorData} onClose={() => setShowIconWizard(false)} onCreated={() => { setShowIconWizard(false); setEditorReload((value) => value + 1) }} />}
     <ScanDialog open={showScanner} onClose={() => setShowScanner(false)} />
+    <DeleteMapDialog map={deleteTarget} markerCount={deleteTarget && detail && deleteTarget.id === detail.peta.id ? detail.penanda.length : null} busy={deletingMap} error={deleteMapError} onClose={() => !deletingMap && setDeleteTarget(null)} onDelete={removeMap} />
   </main>
 }
 

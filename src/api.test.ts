@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ConflictError, createMapDraft, deleteMapIcon, equipmentStatusTone, filterMarkers, ForbiddenError, loadBootstrap, loadMapDetail, loadMaps, publishMap, rankMarkerMatches, resolveScanCode, saveMapMarkers, SessionExpiredError, uploadMapIcon, type MapMarker } from './api'
+import { ConflictError, createMapDraft, deleteMap, deleteMapIcon, equipmentStatusTone, filterMarkers, ForbiddenError, loadBootstrap, loadMapDetail, loadMaps, publishMap, rankMarkerMatches, resolveScanCode, saveMapMarkers, SessionExpiredError, uploadMapIcon, type MapMarker } from './api'
 
 const json = (data: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(data), {
   status,
@@ -105,5 +105,14 @@ describe('loadBootstrap', () => {
 
     await expect(deleteMapIcon(8, request)).resolves.toEqual({ id: 8 })
     expect(request.mock.calls[0][0]).toBe('/api/v1/peta/ikon/8/hapus')
+  })
+
+  it('menghapus peta dengan nama dan revisi sebagai konfirmasi', async () => {
+    await loadBootstrap('', () => json({ data: { id: 1, username: 'admin', nama_lengkap: 'Admin', role: 'admin', capabilities: {}, csrf: { name: 'csrf_test_name', hash: 'aman' } } }))
+    const request = vi.fn((_url: string, _init?: RequestInit) => json({ data: { id: 6 }, csrf: { name: 'csrf_test_name', hash: 'baru' } }))
+
+    await expect(deleteMap(6, { revisi: 3, nama_peta: 'Terminal Selatan' }, request)).resolves.toEqual({ id: 6 })
+    expect(request.mock.calls[0][0]).toBe('/api/v1/peta/6/hapus')
+    expect(JSON.parse((request.mock.calls[0][1] as RequestInit).body as string)).toMatchObject({ revisi: 3, nama_peta: 'Terminal Selatan', csrf_test_name: 'aman' })
   })
 })

@@ -24,7 +24,7 @@ export type MapSummary = {
   nama_lantai: string
   urutan_lantai: number
   revisi: number
-  status: 'siap_diedit' | 'terbit'
+  status: 'draft' | 'siap_diedit' | 'terbit'
   checksum_sha256: string | null
   width_px: number | null
   height_px: number | null
@@ -189,6 +189,9 @@ export const uploadMapIcon = (input: { nama_ikon: string; kategori_peralatan_id:
 
 export const deleteMapIcon = (id: number, request: Requester = fetch) =>
   mutate<{ id: number }>(`/api/v1/peta/ikon/${id}/hapus`, {}, request)
+
+export const deleteMap = (id: number, input: { revisi: number; nama_peta: string }, request: Requester = fetch) =>
+  mutate<{ id: number }>(`/api/v1/peta/${id}/hapus`, input, request)
 
 export const saveMapMarkers = (id: number, input: MarkerSaveInput, request: Requester = fetch) =>
   mutate<MapEditorData>(`/api/v1/peta/${id}/penanda`, input, request)
