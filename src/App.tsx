@@ -10,6 +10,7 @@ import MapEditorPanel from './MapEditorPanel'
 import MapWizard from './MapWizard'
 import IconWizard from './IconWizard'
 import injourneyLogo from '../logo.png'
+import injourneyMiniLogo from '../logo1.jpg'
 
 const MIN_ZOOM = 0.2
 const MAX_ZOOM = 4
@@ -157,6 +158,7 @@ function DeleteMapDialog({ map, markerCount, busy, error, onClose, onDelete }: {
 
 function App() {
   const containerRef = useRef<HTMLDivElement>(null)
+  const fittedMapRef = useRef('')
   const searchRef = useRef<HTMLInputElement>(null)
   const pinchRef = useRef<{ distance: number; center: { x: number; y: number }; view: View } | null>(null)
   const focusedDeepLinkRef = useRef('')
@@ -250,7 +252,14 @@ function App() {
     observer.observe(container)
     return () => observer.disconnect()
   }, [bootstrap.status])
-  useEffect(() => setView(fitView(viewport, detail?.peta)), [viewport, detail?.peta])
+  useEffect(() => {
+    const map = detail?.peta
+    if (!map || viewport.width <= 1 || viewport.height <= 1) return
+    const fitKey = `${map.id}:${map.checksum_sha256 ?? ''}:${map.width_px ?? ''}:${map.height_px ?? ''}`
+    if (fittedMapRef.current === fitKey) return
+    fittedMapRef.current = fitKey
+    setView(fitView(viewport, map))
+  }, [viewport, detail?.peta])
   useEffect(() => {
     const next = new URLSearchParams(window.location.search)
     activeMapId ? next.set('peta_id', String(activeMapId)) : next.delete('peta_id')
@@ -432,7 +441,7 @@ function App() {
   return <main className={editing ? 'editor-mode' : ''}>
     <section className={`workspace ${activePanel ? 'menu-open' : 'menu-closed'}`} aria-label="Viewer peta peralatan">
       <nav className="command-rail" aria-label="Navigasi peta">
-        <a className="rail-home" href="/dashboard" aria-label="Kembali ke aplikasi utama"><RailIcon name="home" /><span>Beranda</span></a>
+        <a className="rail-home" href="/dashboard" aria-label="Kembali ke aplikasi utama"><img className="rail-logo" src={injourneyMiniLogo} alt="" /><RailIcon name="home" /><span>Beranda</span></a>
         <button className={activePanel === 'maps' ? 'active' : ''} type="button" onClick={() => setActivePanel((value) => value === 'maps' ? null : 'maps')} aria-controls="map-sidebar" aria-expanded={activePanel === 'maps'}><RailIcon name="map" /><span>Peta</span></button>
         <button type="button" onClick={() => setShowScanner(true)}><RailIcon name="scan" /><span>Scan QR</span></button>
         <button className={activePanel === 'filters' ? 'active' : ''} type="button" onClick={() => setActivePanel((value) => value === 'filters' ? null : 'filters')} aria-controls="map-sidebar" aria-expanded={activePanel === 'filters'}><RailIcon name="filter" /><span>Filter</span></button>
