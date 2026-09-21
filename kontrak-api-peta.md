@@ -1,6 +1,6 @@
 # Kontrak API Peta Interaktif
 
-Status: implementasi awal read-only, 27 Agustus 2026.
+Status: implementasi viewer dan mutasi admin, diperbarui 21 September 2026.
 
 ## Ketentuan umum
 
@@ -84,3 +84,40 @@ Resolver deep-link dari CodeIgniter/QR:
 - `penanda_peta_peralatan`: satu peralatan maksimal satu kali pada satu peta.
 
 Data identitas/status peralatan tetap dibaca dari tabel CodeIgniter dan tidak diduplikasi ke tabel peta.
+
+## Endpoint editor dan penghapusan
+
+### `GET /api/v1/peta/editor`
+
+Khusus admin. Mengembalikan katalog peta berstatus `draft`, `siap_diedit`, dan `terbit` agar seluruh siklus hidup peta dapat dikelola. Pengguna non-admin hanya memperoleh daftar peta `terbit` dari endpoint publik.
+
+### `GET /api/v1/peta/ikon`
+
+Khusus admin. Mengembalikan seluruh ikon aktif dan kategori peralatan aktif untuk dialog **Kelola ikon**. Endpoint ini tidak memerlukan peta terpilih, sehingga pustaka ikon tetap dapat dikelola ketika belum ada peta atau ketika peta yang dipilih masih berupa draft tanpa denah.
+
+### `POST /api/v1/peta/{id}/hapus`
+
+Khusus admin dan wajib memakai sesi serta token CSRF. Payload:
+
+```json
+{
+  "revisi": 3,
+  "nama_peta": "Terminal Selatan Lantai 2"
+}
+```
+
+- `revisi` harus sama dengan revisi terbaru; perbedaan menghasilkan `409 CONFLICT`.
+- `nama_peta` harus sama persis sebagai konfirmasi tindakan permanen.
+- Peta, cakupan `peta_lokasi`, dan semua penandanya dihapus dalam satu transaksi.
+- Master peralatan, data maintenance, ikon bersama, dan peta lain tidak dihapus.
+- Audit `HAPUS` dipertahankan dengan snapshot status, revisi, gedung/lantai, jumlah cakupan, dan jumlah penanda.
+- Berkas denah/thumbnail dibersihkan setelah transaksi hanya bila berada pada direktori aset peta dan tidak lagi direferensikan record lain.
+
+Respons sukses:
+
+```json
+{
+  "data": { "id": 6 },
+  "csrf": { "name": "csrf_token", "hash": "..." }
+}
+```

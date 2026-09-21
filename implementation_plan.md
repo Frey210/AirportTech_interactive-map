@@ -7,6 +7,16 @@
 **Frontend:** `D:\Airport Technology UPG\Project\interactive_app`  
 **Backend/API:** `D:\Airport Technology UPG\Project\airport-technology`
 
+## Pembaruan UI/UX — 21 September 2026
+
+Review dan rencana rinci: [rencana-perbaikan-ui-ux.md](./rencana-perbaikan-ui-ux.md).
+
+- [x] Prioritas 1: perbaikan state tombol, navigasi tanpa duplikasi, logo Injourney, Beranda desktop/mobile, serta Tutup editor mobile.
+- [x] Prioritas 2: katalog dan status peta, pustaka ikon mandiri, serta hapus draft/terbit dengan perlindungan relasi data dan audit.
+- [ ] Prioritas 3: sheet mobile dan area kanvas, regresi editor/deep-link/pinch, validasi browser dan dokumentasi rilis.
+
+Status pembaruan: **implementasi lokal sedang berlangsung; belum deployment**.
+
 ## 1. Tujuan dokumen
 
 Dokumen ini memecah PRD menjadi tahapan implementasi yang dapat dikerjakan, diuji, dan dirilis secara terpisah. Setiap tahap harus menghasilkan increment yang berjalan dan memiliki kriteria keluar yang terukur.
@@ -622,12 +632,12 @@ Pengguna tidak dapat melompat ke editor sebelum gambar tervalidasi. Draft dapat 
 
 ### 13.1 Build dan container
 
-- [ ] Buat build frontend reproducible dengan lockfile.
+- [x] Buat build frontend reproducible dengan lockfile.
 - [x] Gunakan multi-stage Docker build bila frontend menjadi container terpisah.
 - [x] Sajikan frontend pada `/maps` dan API pada `/api/v1` dengan origin yang sama.
 - [x] Pastikan fallback SPA hanya berlaku di `/maps`, bukan mengambil route CodeIgniter.
 - [x] Tambahkan health check frontend/container bila terpisah.
-- [ ] Mount volume aset peta/ikon secara persisten pada backend.
+- [x] Mount volume aset peta/ikon secara persisten pada backend.
 
 ### 13.2 CI
 
@@ -684,7 +694,7 @@ Pengguna tidak dapat melompat ke editor sebelum gambar tervalidasi. Draft dapat 
 
 - [ ] Panduan pengguna viewer.
 - [ ] Panduan admin editor dan upload.
-- [ ] Panduan deployment.
+- [x] Panduan deployment.
 - [ ] Panduan backup/restore.
 - [ ] Daftar keterbatasan MVP.
 - [ ] Catatan versi dalam bahasa Indonesia.

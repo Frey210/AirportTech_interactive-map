@@ -24,7 +24,7 @@ export type MapSummary = {
   nama_lantai: string
   urutan_lantai: number
   revisi: number
-  status: 'siap_diedit' | 'terbit'
+  status: 'draft' | 'siap_diedit' | 'terbit'
   checksum_sha256: string | null
   width_px: number | null
   height_px: number | null
@@ -67,6 +67,7 @@ export type MapDetail = {
 }
 
 export type MapIcon = { id: number; kategori_peralatan_id: number | null; nama: string; file_url: string; size_ratio_default: number }
+export type MapIconLibrary = { ikon: MapIcon[]; kategori: Array<{ id: number; nama: string }> }
 export type MapEquipment = { id: number; nama_peralatan: string; scan_code: string | null; ip_address: string | null; kategori_peralatan_id: number | null; kategori: string | null; fasilitas: string | null; lokasi: string; user_status: string; status: string; is_aktif: boolean; foto_url: string | null }
 export type MapEditorData = MapDetail & { ikon: MapIcon[]; peralatan: MapEquipment[] }
 export type MarkerSaveInput = {
@@ -150,6 +151,9 @@ export const loadEditableMaps = (request: Requester = fetch, signal?: AbortSigna
 export const loadMapEditor = (id: number, request: Requester = fetch, signal?: AbortSignal) =>
   getData<MapEditorData>(`/api/v1/peta/${id}/editor`, request, signal)
 
+export const loadMapIcons = (request: Requester = fetch, signal?: AbortSignal) =>
+  getData<MapIconLibrary>('/api/v1/peta/ikon', request, signal)
+
 export const loadMapRegions = (request: Requester = fetch, signal?: AbortSignal) =>
   getData<MapRegion[]>('/api/v1/peta/referensi/wilayah', request, signal)
 
@@ -189,6 +193,9 @@ export const uploadMapIcon = (input: { nama_ikon: string; kategori_peralatan_id:
 
 export const deleteMapIcon = (id: number, request: Requester = fetch) =>
   mutate<{ id: number }>(`/api/v1/peta/ikon/${id}/hapus`, {}, request)
+
+export const deleteMap = (id: number, input: { revisi: number; nama_peta: string }, request: Requester = fetch) =>
+  mutate<{ id: number }>(`/api/v1/peta/${id}/hapus`, input, request)
 
 export const saveMapMarkers = (id: number, input: MarkerSaveInput, request: Requester = fetch) =>
   mutate<MapEditorData>(`/api/v1/peta/${id}/penanda`, input, request)
