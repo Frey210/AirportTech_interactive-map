@@ -361,6 +361,17 @@ main { min-height: 540px; }
 .canvas-controls button { min-width: 32px; height: 32px; border: 1px solid var(--ij-line); border-radius: 7px; background: #f7f9f9; color: #43575f; cursor: pointer; }
 .canvas-controls output { min-width: 48px; color: #536b75; font-size: 10px; }
 .status-legend { right: auto; bottom: 18px; left: 22px; min-height: 42px; align-items: center; border-color: var(--ij-line); background: var(--ij-surface); color: #53666e; box-shadow: 0 8px 26px rgba(35,54,61,.1); }
+.network-legend { position: absolute; z-index: 4; bottom: 72px; left: 22px; display: flex; min-height: 34px; align-items: center; gap: 10px; padding: 7px 10px; border: 1px solid var(--ij-line); border-radius: 9px; background: rgba(255,255,255,.94); color: #53666e; box-shadow: 0 8px 26px rgba(35,54,61,.1); font-size: 10px; pointer-events: none; }
+.network-legend span,.marker-network,.network-detail dd { display: flex; align-items: center; gap: 5px; }
+.network-legend i,.marker-network i,.network-detail i { display: inline-block; flex: 0 0 auto; width: 9px; height: 9px; border-radius: 50%; }
+.network-legend .network-online { background: #18a866; }
+.network-legend .network-warning { background: #d78a13; }
+.network-legend .network-down { background: #ef5848; }
+.network-legend small { padding-left: 8px; border-left: 1px solid var(--ij-line); color: var(--ij-muted); }
+.network-legend.stale { border-color: #d78a13; }
+.marker-list .marker-network { color: #53666e; font-weight: 650; }
+.equipment-detail dl .network-detail { background: #eef8f4; }
+.network-detail dd { font-variant-numeric: tabular-nums; }
 .floating-detail { position: absolute; z-index: 9; top: 82px; right: 22px; width: 294px; max-height: calc(100% - 154px); padding: 0 0 14px; overflow-y: auto; border-color: var(--ij-line); border-radius: 12px; background: var(--ij-surface); color: #303739; box-shadow: 0 18px 50px rgba(35,54,61,.14); }
 .floating-detail > :not(.close-detail) { margin-right: 15px; margin-left: 15px; }
 .floating-detail .section-label { margin-top: 17px; }
@@ -446,6 +457,7 @@ main { min-height: 540px; }
   .search-suggestions { max-height: min(32dvh,220px); }
   .floating-detail { top: auto; right: 8px; bottom: 8px; left: 8px; width: auto; max-height: min(40dvh,340px); }
   .status-legend { display: none; }
+  .network-legend { display: none; }
   .canvas-controls { right: 8px; bottom: 8px; height: 36px; gap: 4px; padding: 3px; }
   .canvas-controls button { min-width: 28px; width: 28px; height: 28px; }
   .canvas-controls output { min-width: 34px; }

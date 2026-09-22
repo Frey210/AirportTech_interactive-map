@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ConflictError, createMapDraft, deleteMap, deleteMapIcon, equipmentStatusTone, filterMarkers, ForbiddenError, loadBootstrap, loadMapDetail, loadMapIcons, loadMaps, publishMap, rankMarkerMatches, resolveScanCode, saveMapMarkers, SessionExpiredError, uploadMapIcon, type MapMarker } from './api'
+import { ConflictError, createMapDraft, deleteMap, deleteMapIcon, equipmentStatusTone, filterMarkers, ForbiddenError, loadBootstrap, loadMapDetail, loadMapIcons, loadMapNetworkStatus, loadMaps, networkStatusText, networkStatusTone, publishMap, rankMarkerMatches, resolveScanCode, saveMapMarkers, SessionExpiredError, uploadMapIcon, type MapMarker } from './api'
 
 const json = (data: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(data), {
   status,
@@ -32,6 +32,13 @@ describe('loadBootstrap', () => {
     await expect(loadMapDetail(4, request)).resolves.toMatchObject({ peta: { id: 4 } })
     expect(request).toHaveBeenNthCalledWith(1, '/api/v1/peta', expect.anything())
     expect(request).toHaveBeenNthCalledWith(2, '/api/v1/peta/4', expect.anything())
+  })
+
+  it('memuat snapshot status jaringan khusus peta aktif', async () => {
+    const request = vi.fn(() => json({ data: { interval_detik: 60, diperbarui_pada: 123, status: [{ peralatan_id: 9, status_ping: 'ONLINE', latency_ms: 47.1, diperiksa_pada: 122 }] } }))
+
+    await expect(loadMapNetworkStatus(4, request)).resolves.toMatchObject({ interval_detik: 60, status: [{ peralatan_id: 9 }] })
+    expect(request).toHaveBeenCalledWith('/api/v1/peta/4/status-jaringan', expect.anything())
   })
 
   it('menyaring penanda menurut pencarian dan filter aktif', () => {
@@ -87,6 +94,13 @@ describe('loadBootstrap', () => {
     expect(equipmentStatusTone({ is_aktif: true, status: 'Aktif', user_status: 'Beroperasi' })).toMatchObject({ color: '#258457' })
     expect(equipmentStatusTone({ is_aktif: true, status: 'Aktif', user_status: 'Rusak' })).toMatchObject({ color: '#c43d3d' })
     expect(equipmentStatusTone({ is_aktif: false, status: 'Nonaktif', user_status: 'Beroperasi' })).toMatchObject({ color: '#66737a' })
+  })
+
+  it('memberi teks dan warna status jaringan tanpa hanya mengandalkan warna', () => {
+    const online = { peralatan_id: 9, status_ping: 'ONLINE' as const, latency_ms: 47.1, diperiksa_pada: 123 }
+    expect(networkStatusTone(online)).toMatchObject({ color: '#18a866', label: 'Online' })
+    expect(networkStatusText(online)).toBe('47,1 ms')
+    expect(networkStatusText({ ...online, status_ping: 'TIDAK_MERESPONS', latency_ms: null })).toBe('Tidak merespons')
   })
 
   it('mengunggah ikon sebagai FormData beserta CSRF', async () => {

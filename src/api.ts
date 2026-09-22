@@ -66,6 +66,10 @@ export type MapDetail = {
   penanda: MapMarker[]
 }
 
+export type NetworkStatusCode = 'ONLINE' | 'TIDAK_MERESPONS' | 'LATENCY_TINGGI' | 'BELUM_ADA_DATA' | 'NONAKTIF'
+export type NetworkStatus = { peralatan_id: number; status_ping: NetworkStatusCode; latency_ms: number | null; diperiksa_pada: number | null }
+export type MapNetworkSnapshot = { interval_detik: number; diperbarui_pada: number; status: NetworkStatus[] }
+
 export type MapIcon = { id: number; kategori_peralatan_id: number | null; nama: string; file_url: string; size_ratio_default: number }
 export type MapIconLibrary = { ikon: MapIcon[]; kategori: Array<{ id: number; nama: string }> }
 export type MapEquipment = { id: number; nama_peralatan: string; scan_code: string | null; ip_address: string | null; kategori_peralatan_id: number | null; kategori: string | null; fasilitas: string | null; lokasi: string; user_status: string; status: string; is_aktif: boolean; foto_url: string | null }
@@ -112,6 +116,23 @@ export function equipmentStatusTone(peralatan: Pick<MapMarker['peralatan'], 'is_
   return { color: '#173b51', label: peralatan.user_status || peralatan.status || 'Status lain' }
 }
 
+export function networkStatusTone(status?: NetworkStatus) {
+  switch (status?.status_ping) {
+    case 'ONLINE': return { color: '#18a866', label: 'Online' }
+    case 'LATENCY_TINGGI': return { color: '#d78a13', label: 'Latency tinggi' }
+    case 'TIDAK_MERESPONS': return { color: '#ef5848', label: 'Tidak merespons' }
+    case 'NONAKTIF': return { color: '#89979c', label: 'Monitoring nonaktif' }
+    default: return { color: '#66777e', label: 'Belum ada data' }
+  }
+}
+
+export function networkStatusText(status?: NetworkStatus) {
+  const tone = networkStatusTone(status)
+  if (status?.latency_ms === null || status?.latency_ms === undefined) return tone.label
+  const latency = status.latency_ms.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+  return status.status_ping === 'ONLINE' ? `${latency} ms` : `${tone.label} · ${latency} ms`
+}
+
 type Requester = (input: string, init?: RequestInit) => Promise<Response>
 let csrf: Session['csrf'] | null = null
 
@@ -144,6 +165,9 @@ export const loadMaps = (request: Requester = fetch, signal?: AbortSignal) =>
 
 export const loadMapDetail = (id: number, request: Requester = fetch, signal?: AbortSignal) =>
   getData<MapDetail>(`/api/v1/peta/${id}`, request, signal)
+
+export const loadMapNetworkStatus = (id: number, request: Requester = fetch, signal?: AbortSignal) =>
+  getData<MapNetworkSnapshot>(`/api/v1/peta/${id}/status-jaringan`, request, signal)
 
 export const loadEditableMaps = (request: Requester = fetch, signal?: AbortSignal) =>
   getData<MapSummary[]>('/api/v1/peta/editor', request, signal)

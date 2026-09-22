@@ -54,6 +54,12 @@ Mengembalikan:
 
 Koordinat adalah pusat ikon terhadap dimensi file asli; `size_ratio` dihitung terhadap sisi terpendek gambar.
 
+### `GET /api/v1/peta/{id}/status-jaringan`
+
+Mengembalikan snapshot monitoring hanya untuk peralatan yang memiliki penanda pada peta aktif. Respons berisi `interval_detik`, `diperbarui_pada`, serta daftar ringkas `peralatan_id`, `status_ping`, `latency_ms`, dan `diperiksa_pada`. Frontend memakai interval tersebut untuk polling batch, berhenti ketika tab tersembunyi, serta mempertahankan snapshot terakhir bila pembaruan gagal. Endpoint ini tidak melakukan satu request per penanda dan tidak mengubah data peta.
+
+Status yang mungkin: `ONLINE`, `LATENCY_TINGGI`, `TIDAK_MERESPONS`, `BELUM_ADA_DATA`, dan `NONAKTIF`.
+
 ### `GET /api/v1/peralatan/{id}/peta`
 
 Resolver deep-link dari CodeIgniter/QR:

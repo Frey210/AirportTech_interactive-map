@@ -1,9 +1,9 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Konva from 'konva'
-import { Circle, Group, Image as KonvaImage, Layer, Stage, Text } from 'react-konva'
+import { Circle, Group, Image as KonvaImage, Layer, Rect, Stage, Text } from 'react-konva'
 import {
-  ConflictError, deleteMap, equipmentStatusTone, filterMarkers, ForbiddenError, loadBootstrap, loadEditableMaps, loadMapDetail, loadMapEditor, loadMapIcons, loadMaps, publishMap, rankMarkerMatches, resolveScanCode, saveMapMarkers, SessionExpiredError,
-  type MapDetail, type MapEditorData, type MapIconLibrary, type MapMarker, type MapResolver, type MapSummary, type Session,
+  ConflictError, deleteMap, equipmentStatusTone, filterMarkers, ForbiddenError, loadBootstrap, loadEditableMaps, loadMapDetail, loadMapEditor, loadMapIcons, loadMapNetworkStatus, loadMaps, networkStatusText, networkStatusTone, publishMap, rankMarkerMatches, resolveScanCode, saveMapMarkers, SessionExpiredError,
+  type MapDetail, type MapEditorData, type MapIconLibrary, type MapMarker, type MapResolver, type MapSummary, type NetworkStatus, type Session,
 } from './api'
 import { constrainView } from './coordinates'
 import MapEditorPanel from './MapEditorPanel'
@@ -20,6 +20,22 @@ type BootstrapState =
   | { status: 'ready'; session: Session; resolver: MapResolver | null }
   | { status: 'unauthenticated' | 'forbidden' | 'error' }
 
+const remoteImageCache = new Map<string, Promise<HTMLImageElement>>()
+
+function loadRemoteImage(url: string) {
+  const cached = remoteImageCache.get(url)
+  if (cached) return cached
+  const pending = new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = reject
+    image.src = url
+  })
+  remoteImageCache.set(url, pending)
+  pending.catch(() => remoteImageCache.delete(url))
+  return pending
+}
+
 function fitView(viewport: { width: number; height: number }, map?: MapSummary): View {
   if (!map?.width_px || !map.height_px) return { x: 0, y: 0, scale: 1 }
   const mobile = viewport.width <= 900
@@ -30,16 +46,21 @@ function fitView(viewport: { width: number; height: number }, map?: MapSummary):
   return { x: inset.left + (width - map.width_px * scale) / 2, y: inset.top + (height - map.height_px * scale) / 2, scale }
 }
 
+function formatNetworkTime(timestamp: number) {
+  return new Intl.DateTimeFormat('id-ID', {
+    timeZone: 'Asia/Makassar', day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  }).format(new Date(timestamp * 1000)).replaceAll('/', '-') + ' WITA'
+}
+
 function useRemoteImage(url: string | null) {
   const [state, setState] = useState<{ image: HTMLImageElement | null; error: boolean }>({ image: null, error: false })
   useEffect(() => {
     if (!url) { setState({ image: null, error: true }); return }
+    let active = true
     setState({ image: null, error: false })
-    const image = new Image()
-    image.onload = () => setState({ image, error: false })
-    image.onerror = () => setState({ image: null, error: true })
-    image.src = url
-    return () => { image.onload = null; image.onerror = null }
+    loadRemoteImage(url).then((image) => active && setState({ image, error: false })).catch(() => active && setState({ image: null, error: true }))
+    return () => { active = false }
   }, [url])
   return state
 }
@@ -62,6 +83,22 @@ const MarkerNode = memo(function MarkerNode({ marker, map, selected, draggable =
       : <Text text={marker.peralatan.nama_peralatan.slice(0, 2).toUpperCase()} x={-size / 2} y={-size * .13} width={size} align="center" fill="#fff" fontSize={size * .27} fontStyle="bold" />}
   </Group>
 }, (previous, next) => previous.marker === next.marker && previous.map === next.map && previous.selected === next.selected && previous.draggable === next.draggable)
+
+const NetworkStatusNode = memo(function NetworkStatusNode({ marker, map, network, selected }: { marker: MapMarker; map: MapSummary; network: NetworkStatus; selected: boolean }) {
+  const size = Math.max(28, marker.size_ratio * Math.min(map.width_px ?? 0, map.height_px ?? 0)) * (selected ? 1.25 : 1)
+  const tone = networkStatusTone(network)
+  const text = networkStatusText(network)
+  const showText = selected || network.status_ping === 'TIDAK_MERESPONS' || network.status_ping === 'LATENCY_TINGGI'
+  const fontSize = Math.max(10, size * .17)
+  const labelWidth = text.length * fontSize * .56 + 12
+  const onRight = marker.x_ratio < .6
+  const dotX = (onRight ? 1 : -1) * size * .48
+  const labelX = onRight ? size * .66 : -size * .66 - labelWidth
+  return <Group x={marker.x_ratio * (map.width_px ?? 0)} y={marker.y_ratio * (map.height_px ?? 0)}>
+    <Circle x={dotX} y={size * .45} radius={Math.max(5, size * .11)} fill={tone.color} stroke="#fff" strokeWidth={2} shadowBlur={5} shadowOpacity={.25} />
+    {showText && <><Rect x={labelX} y={size * .25} width={labelWidth} height={fontSize + 10} cornerRadius={(fontSize + 10) / 2} fill="rgba(255,255,255,.94)" stroke="rgba(64,84,91,.18)" strokeWidth={1} shadowBlur={5} shadowOpacity={.16} /><Text text={text} x={labelX + 6} y={size * .25 + 5} width={labelWidth - 12} fill="#24363c" fontSize={fontSize} fontStyle="bold" /></>}
+  </Group>
+}, (previous, next) => previous.marker === next.marker && previous.map === next.map && previous.selected === next.selected && previous.network.status_ping === next.network.status_ping && previous.network.latency_ms === next.network.latency_ms && previous.network.diperiksa_pada === next.network.diperiksa_pada)
 
 function StatusScreen({ state, retry }: { state: Exclude<BootstrapState, { status: 'ready' }>; retry: () => void }) {
   const loading = state.status === 'loading'
@@ -192,6 +229,9 @@ function App() {
   const [detail, setDetail] = useState<MapDetail | null>(null)
   const [detailStatus, setDetailStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [detailRetry, setDetailRetry] = useState(0)
+  const [networkByEquipment, setNetworkByEquipment] = useState<Record<number, NetworkStatus>>({})
+  const [networkState, setNetworkState] = useState<'idle' | 'ready' | 'stale'>('idle')
+  const [networkUpdatedAt, setNetworkUpdatedAt] = useState<number | null>(null)
   const [selectedMarkerId, setSelectedMarkerId] = useState<number | null>(null)
   const [query, setQuery] = useState(params.get('cari') ?? '')
   const [searchOpen, setSearchOpen] = useState(false)
@@ -201,6 +241,7 @@ function App() {
   const [jbrd, setJbrd] = useState(params.get('jbrd') ?? '')
   const [status, setStatus] = useState(params.get('status') ?? '')
   const [userStatus, setUserStatus] = useState(params.get('user_status') ?? '')
+  const [networkStatus, setNetworkStatus] = useState(params.get('jaringan') ?? '')
   const [viewport, setViewport] = useState({ width: 1, height: 1 })
   const [view, setView] = useState<View>({ x: 0, y: 0, scale: 1 })
   const mapImage = useRemoteImage(detail?.peta.file_url ?? null)
@@ -246,6 +287,51 @@ function App() {
   }, [activeMapId, bootstrap, detailRetry, editorReload, maps])
 
   useEffect(() => {
+    if (activeMapId === null || !detail || editing) {
+      setNetworkByEquipment({}); setNetworkState('idle'); setNetworkUpdatedAt(null)
+      return
+    }
+    let stopped = false
+    let running = false
+    let timer = 0
+    let intervalMs = 60_000
+    let controller: AbortController | null = null
+    const schedule = () => {
+      window.clearTimeout(timer)
+      if (!stopped && !document.hidden) timer = window.setTimeout(() => void refresh().finally(schedule), intervalMs)
+    }
+    const refresh = async () => {
+      if (stopped || document.hidden || running) return
+      running = true
+      controller = new AbortController()
+      try {
+        const snapshot = await loadMapNetworkStatus(activeMapId, fetch, controller.signal)
+        if (stopped) return
+        setNetworkByEquipment(Object.fromEntries(snapshot.status.map((item) => [item.peralatan_id, item])))
+        setNetworkUpdatedAt(snapshot.diperbarui_pada)
+        setNetworkState('ready')
+        intervalMs = Math.max(30, snapshot.interval_detik) * 1000
+      } catch (reason) {
+        if (!stopped && !(reason instanceof DOMException && reason.name === 'AbortError')) setNetworkState('stale')
+      } finally {
+        running = false
+      }
+    }
+    const visibility = () => {
+      if (document.hidden) {
+        window.clearTimeout(timer); controller?.abort()
+      } else {
+        void refresh().finally(schedule)
+      }
+    }
+    void refresh().finally(schedule)
+    document.addEventListener('visibilitychange', visibility)
+    return () => {
+      stopped = true; window.clearTimeout(timer); controller?.abort(); document.removeEventListener('visibilitychange', visibility)
+    }
+  }, [activeMapId, detail?.peta.id, editing])
+
+  useEffect(() => {
     const container = containerRef.current
     if (!container) return
     const observer = new ResizeObserver(([entry]) => setViewport({ width: Math.max(1, Math.floor(entry.contentRect.width)), height: Math.max(1, Math.floor(entry.contentRect.height)) }))
@@ -269,19 +355,22 @@ function App() {
     jbrd ? next.set('jbrd', jbrd) : next.delete('jbrd')
     status ? next.set('status', status) : next.delete('status')
     userStatus ? next.set('user_status', userStatus) : next.delete('user_status')
+    networkStatus ? next.set('jaringan', networkStatus) : next.delete('jaringan')
     window.history.replaceState(null, '', `${window.location.pathname}${next.size ? `?${next}` : ''}`)
-  }, [activeMapId, query, category, facility, jbrd, status, userStatus])
+  }, [activeMapId, query, category, facility, jbrd, status, userStatus, networkStatus])
 
   const displayedMarkers = editing ? draftMarkers : detail?.penanda ?? []
   const filteredMarkers = useMemo(() => {
-    return editing ? draftMarkers : filterMarkers(detail?.penanda ?? [], { query, category, facility, jbrd, status, userStatus })
-  }, [detail, draftMarkers, editing, query, category, facility, jbrd, status, userStatus])
+    const markers = editing ? draftMarkers : filterMarkers(detail?.penanda ?? [], { query, category, facility, jbrd, status, userStatus })
+    return !networkStatus || editing ? markers : markers.filter((marker) => (networkByEquipment[marker.peralatan.id]?.status_ping ?? 'NONAKTIF') === networkStatus)
+  }, [detail, draftMarkers, editing, query, category, facility, jbrd, status, userStatus, networkStatus, networkByEquipment])
   const categories = useMemo(() => [...new Set((detail?.penanda ?? []).map((item) => item.peralatan.kategori).filter(Boolean))] as string[], [detail])
   const facilities = useMemo(() => [...new Set((detail?.penanda ?? []).map((item) => item.peralatan.fasilitas).filter(Boolean))] as string[], [detail])
   const jbrds = useMemo(() => [...new Set((detail?.penanda ?? []).map((item) => item.peralatan.lokasi).filter((item): item is string => !!item && /jbrd/i.test(item)))].sort((a, b) => a.localeCompare(b, 'id', { numeric: true })), [detail])
   const statuses = useMemo(() => [...new Set((detail?.penanda ?? []).map((item) => item.peralatan.status).filter(Boolean))] as string[], [detail])
   const userStatuses = useMemo(() => [...new Set((detail?.penanda ?? []).map((item) => item.peralatan.user_status).filter(Boolean))], [detail])
   const selectedMarker = displayedMarkers.find((marker) => marker.id === selectedMarkerId) ?? null
+  const selectedNetwork = selectedMarker ? networkByEquipment[selectedMarker.peralatan.id] : undefined
   const activeMap = maps.find((map) => map.id === activeMapId) ?? null
   const searchSuggestions = useMemo(() => rankMarkerMatches(detail?.penanda ?? [], query).slice(0, 8), [detail, query])
 
@@ -483,11 +572,12 @@ function App() {
           {jbrds.length > 0 && <><label htmlFor="jbrd-filter">Panel JBRD</label><select id="jbrd-filter" value={jbrd} onChange={(event) => setJbrd(event.target.value)}><option value="">Semua JBRD</option>{jbrds.map((item) => <option key={item}>{item}</option>)}</select></>}
           <label htmlFor="status-filter">Status</label><select id="status-filter" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Semua status</option>{statuses.map((item) => <option key={item}>{item}</option>)}</select>
           <label htmlFor="user-status-filter">User status</label><select id="user-status-filter" value={userStatus} onChange={(event) => setUserStatus(event.target.value)}><option value="">Semua user status</option>{userStatuses.map((item) => <option key={item}>{item}</option>)}</select>
-          <div className="result-summary" role="status"><span>{filteredMarkers.length} peralatan</span><button onClick={() => { setQuery(''); setCategory(''); setFacility(''); setJbrd(''); setStatus(''); setUserStatus('') }}>Reset filter</button></div>
+          <label htmlFor="network-filter">Status jaringan</label><select id="network-filter" value={networkStatus} onChange={(event) => setNetworkStatus(event.target.value)}><option value="">Semua status jaringan</option><option value="ONLINE">Online</option><option value="LATENCY_TINGGI">Latency tinggi</option><option value="TIDAK_MERESPONS">Tidak merespons</option><option value="BELUM_ADA_DATA">Belum ada data</option><option value="NONAKTIF">Monitoring nonaktif</option></select>
+          <div className="result-summary" role="status"><span>{filteredMarkers.length} peralatan</span><button onClick={() => { setQuery(''); setCategory(''); setFacility(''); setJbrd(''); setStatus(''); setUserStatus(''); setNetworkStatus('') }}>Reset filter</button></div>
         </div>}
 
         {!editing && activePanel === 'filters' && <div className="marker-list" aria-label="Daftar peralatan pada peta">
-          {filteredMarkers.map((marker) => <button key={marker.id} className={selectedMarkerId === marker.id ? 'active' : ''} onClick={() => focusMarker(marker)} aria-pressed={selectedMarkerId === marker.id}><strong>{marker.peralatan.nama_peralatan}</strong><small>{marker.peralatan.scan_code || 'Tanpa scan code'} · {marker.peralatan.status}</small></button>)}
+          {filteredMarkers.map((marker) => { const network = networkByEquipment[marker.peralatan.id]; return <button key={marker.id} className={selectedMarkerId === marker.id ? 'active' : ''} onClick={() => focusMarker(marker)} aria-pressed={selectedMarkerId === marker.id}><strong>{marker.peralatan.nama_peralatan}</strong><small>{marker.peralatan.scan_code || 'Tanpa scan code'} · {marker.peralatan.status}</small><small className="marker-network"><i style={{ background: networkStatusTone(network).color }} />{networkStatusText(network)}</small></button> })}
           {detail && filteredMarkers.length === 0 && <p className="empty">Tidak ada peralatan yang cocok. Ubah pencarian atau reset filter.</p>}
         </div>}
 
@@ -506,10 +596,11 @@ function App() {
         {detailStatus === 'loading' && <div className="canvas-message" role="status">Memuat denah dan penanda…</div>}
         {detailStatus === 'error' && <div className="canvas-message error" role="alert">Detail peta gagal dimuat.<button onClick={() => setDetailRetry((value) => value + 1)}>Coba lagi</button></div>}
         {detailStatus === 'ready' && mapImage.error && <div className="canvas-message error" role="alert">Gambar denah tidak tersedia. Data penanda tetap dapat dibuka dari daftar.</div>}
-        {!editing && selectedMarker && <article className="equipment-detail floating-detail"><button className="close-detail" onClick={() => setSelectedMarkerId(null)} aria-label="Tutup detail peralatan">×</button><p className="section-label">{equipmentStatusTone(selectedMarker.peralatan).label}</p><h2>{selectedMarker.peralatan.nama_peralatan}</h2><code>{selectedMarker.peralatan.scan_code || 'Tanpa scan code'}</code>{selectedMarker.peralatan.foto_url ? <img className="equipment-photo" src={selectedMarker.peralatan.foto_url} alt={`Foto ${selectedMarker.peralatan.nama_peralatan}`} /> : <div className="photo-placeholder">Belum ada foto peralatan</div>}<dl><div><dt>Kategori</dt><dd>{selectedMarker.peralatan.kategori || '—'}</dd></div><div><dt>Fasilitas</dt><dd>{selectedMarker.peralatan.fasilitas || '—'}</dd></div><div><dt>User status</dt><dd>{selectedMarker.peralatan.user_status}</dd></div><div><dt>IP peralatan</dt><dd>{selectedMarker.peralatan.ip_address || 'Belum diisi'}</dd></div></dl><a className="primary-link" href={selectedMarker.peralatan.detail_url}>Buka detail &amp; maintenance</a></article>}
+        {!editing && selectedMarker && <article className="equipment-detail floating-detail"><button className="close-detail" onClick={() => setSelectedMarkerId(null)} aria-label="Tutup detail peralatan">×</button><p className="section-label">{equipmentStatusTone(selectedMarker.peralatan).label}</p><h2>{selectedMarker.peralatan.nama_peralatan}</h2><code>{selectedMarker.peralatan.scan_code || 'Tanpa scan code'}</code>{selectedMarker.peralatan.foto_url ? <img className="equipment-photo" src={selectedMarker.peralatan.foto_url} alt={`Foto ${selectedMarker.peralatan.nama_peralatan}`} /> : <div className="photo-placeholder">Belum ada foto peralatan</div>}<dl><div><dt>Kategori</dt><dd>{selectedMarker.peralatan.kategori || '—'}</dd></div><div><dt>Fasilitas</dt><dd>{selectedMarker.peralatan.fasilitas || '—'}</dd></div><div><dt>User status</dt><dd>{selectedMarker.peralatan.user_status}</dd></div><div><dt>IP peralatan</dt><dd>{selectedMarker.peralatan.ip_address || 'Belum diisi'}</dd></div><div className="network-detail"><dt>Status jaringan</dt><dd><i style={{ background: networkStatusTone(selectedNetwork).color }} />{networkStatusText(selectedNetwork)}</dd></div><div><dt>Terakhir diperiksa</dt><dd>{selectedNetwork?.diperiksa_pada ? formatNetworkTime(selectedNetwork.diperiksa_pada) : '—'}</dd></div></dl><a className="primary-link" href={selectedMarker.peralatan.detail_url}>Buka detail &amp; maintenance</a></article>}
         <div className="canvas-controls"><button onClick={() => zoom(1 / 1.15)} aria-label="Perkecil peta">−</button><output>{Math.round(view.scale * 100)}%</output><button onClick={() => zoom(1.15)} aria-label="Perbesar peta">+</button><button onClick={() => setView(fitView(viewport, detail?.peta))}>Fit</button></div>
         {detail && <div className="status-legend" aria-label="Warna status penanda"><span><i className="operating" />Beroperasi</span><span><i className="standby" />Standby</span><span><i className="repair" />Perbaikan</span><span><i className="broken" />Rusak</span><span><i className="inactive" />Nonaktif</span></div>}
-        {detail && mapImage.image && <Stage width={viewport.width} height={viewport.height} x={view.x} y={view.y} scaleX={view.scale} scaleY={view.scale} draggable dragBoundFunc={(position) => bounded({ ...position, scale: view.scale })} onDragEnd={(event) => { if (event.target === event.currentTarget) setView(bounded({ x: event.target.x(), y: event.target.y(), scale: view.scale })) }} onWheel={handleWheel} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={() => { pinchRef.current = null }}><Layer listening={false}><KonvaImage image={mapImage.image} width={detail.peta.width_px ?? mapImage.image.naturalWidth} height={detail.peta.height_px ?? mapImage.image.naturalHeight} shadowBlur={18} shadowOpacity={.18} /></Layer><Layer>{filteredMarkers.map((marker) => <MarkerNode key={marker.id} marker={marker} map={detail.peta} selected={marker.id === selectedMarkerId} draggable={editing} onSelect={() => editing ? setSelectedMarkerId(marker.id) : focusMarker(marker)} onMove={(x_ratio, y_ratio) => updateDraftMarker(marker.id, { x_ratio, y_ratio })} />)}</Layer></Stage>}
+        {detail && !editing && <div className={`network-legend ${networkState}`} role="status" aria-live="polite" aria-atomic="true"><span><i className="network-online" />Online</span><span><i className="network-warning" />Latency tinggi</span><span><i className="network-down" />Tidak merespons</span><small>{networkState === 'stale' ? 'Pembaruan tertunda' : networkUpdatedAt ? `Diperbarui ${formatNetworkTime(networkUpdatedAt)}` : 'Memuat status jaringan…'}</small></div>}
+        {detail && mapImage.image && <Stage width={viewport.width} height={viewport.height} x={view.x} y={view.y} scaleX={view.scale} scaleY={view.scale} draggable dragBoundFunc={(position) => bounded({ ...position, scale: view.scale })} onDragEnd={(event) => { if (event.target === event.currentTarget) setView(bounded({ x: event.target.x(), y: event.target.y(), scale: view.scale })) }} onWheel={handleWheel} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={() => { pinchRef.current = null }}><Layer listening={false}><KonvaImage image={mapImage.image} width={detail.peta.width_px ?? mapImage.image.naturalWidth} height={detail.peta.height_px ?? mapImage.image.naturalHeight} shadowBlur={18} shadowOpacity={.18} /></Layer><Layer>{filteredMarkers.map((marker) => <MarkerNode key={marker.id} marker={marker} map={detail.peta} selected={marker.id === selectedMarkerId} draggable={editing} onSelect={() => editing ? setSelectedMarkerId(marker.id) : focusMarker(marker)} onMove={(x_ratio, y_ratio) => updateDraftMarker(marker.id, { x_ratio, y_ratio })} />)}</Layer>{!editing && <Layer listening={false}>{filteredMarkers.map((marker) => { const network = networkByEquipment[marker.peralatan.id]; return network ? <NetworkStatusNode key={marker.id} marker={marker} map={detail.peta} network={network} selected={marker.id === selectedMarkerId} /> : null })}</Layer>}</Stage>}
       </div></div>
     </section>
     {showWizard && <MapWizard onClose={() => setShowWizard(false)} onCreated={(id) => { setShowWizard(false); setActiveMapId(id); setMapsRetry((value) => value + 1) }} />}
