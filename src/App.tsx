@@ -65,40 +65,36 @@ function useRemoteImage(url: string | null) {
   return state
 }
 
-const MarkerNode = memo(function MarkerNode({ marker, map, selected, draggable = false, onSelect, onMove }: { marker: MapMarker; map: MapSummary; selected: boolean; draggable?: boolean; onSelect: () => void; onMove?: (xRatio: number, yRatio: number) => void }) {
+const MarkerNode = memo(function MarkerNode({ marker, map, network, selected, draggable = false, onSelect, onMove }: { marker: MapMarker; map: MapSummary; network?: NetworkStatus; selected: boolean; draggable?: boolean; onSelect: () => void; onMove?: (xRatio: number, yRatio: number) => void }) {
   const groupRef = useRef<Konva.Group>(null)
   const icon = useRemoteImage(marker.ikon.file_url)
   const size = Math.max(28, marker.size_ratio * Math.min(map.width_px ?? 0, map.height_px ?? 0)) * (selected ? 1.25 : 1)
   const tone = equipmentStatusTone(marker.peralatan)
+  const networkTone = network ? networkStatusTone(network) : null
+  const networkText = network ? networkStatusText(network) : ''
+  const showNetworkText = !!network && (selected || network.status_ping === 'TIDAK_MERESPONS' || network.status_ping === 'LATENCY_TINGGI')
+  const networkFontSize = Math.max(10, size * .17)
+  const networkLabelWidth = networkText.length * networkFontSize * .56 + 12
+  const networkOnRight = marker.x_ratio < .6
+  const networkDotX = (networkOnRight ? 1 : -1) * size * .48
+  const networkLabelX = networkOnRight ? size * .66 : -size * .66 - networkLabelWidth
   useEffect(() => {
-    if (!groupRef.current || !icon.image) return
+    if (!groupRef.current) return
     groupRef.current.cache({ pixelRatio: 1 })
     groupRef.current.getLayer()?.batchDraw()
     return () => { groupRef.current?.clearCache() }
-  }, [icon.image, selected, size, tone.color])
+  }, [icon.image, network?.latency_ms, network?.status_ping, selected, size, tone.color])
   return <Group ref={groupRef} x={marker.x_ratio * (map.width_px ?? 0)} y={marker.y_ratio * (map.height_px ?? 0)} rotation={marker.rotation_deg} draggable={draggable} onClick={onSelect} onTap={onSelect} onDragEnd={(event) => onMove?.(Math.min(1, Math.max(0, event.target.x() / (map.width_px ?? 1))), Math.min(1, Math.max(0, event.target.y() / (map.height_px ?? 1))))}>
     <Circle radius={size * .62} fill={tone.color} stroke={selected ? '#14757f' : '#fff'} strokeWidth={selected ? 7 : 3} shadowBlur={selected ? 16 : 7} shadowOpacity={.28} />
     {icon.image
       ? <KonvaImage image={icon.image} x={-size / 2} y={-size / 2} width={size} height={size} />
       : <Text text={marker.peralatan.nama_peralatan.slice(0, 2).toUpperCase()} x={-size / 2} y={-size * .13} width={size} align="center" fill="#fff" fontSize={size * .27} fontStyle="bold" />}
+    {networkTone && <Group rotation={-marker.rotation_deg}>
+      <Circle x={networkDotX} y={size * .45} radius={Math.max(5, size * .11)} fill={networkTone.color} stroke="#fff" strokeWidth={2} shadowBlur={5} shadowOpacity={.25} />
+      {showNetworkText && <><Rect x={networkLabelX} y={size * .25} width={networkLabelWidth} height={networkFontSize + 10} cornerRadius={(networkFontSize + 10) / 2} fill="rgba(255,255,255,.94)" stroke="rgba(64,84,91,.18)" strokeWidth={1} shadowBlur={5} shadowOpacity={.16} /><Text text={networkText} x={networkLabelX + 6} y={size * .25 + 5} width={networkLabelWidth - 12} fill="#24363c" fontSize={networkFontSize} fontStyle="bold" /></>}
+    </Group>}
   </Group>
-}, (previous, next) => previous.marker === next.marker && previous.map === next.map && previous.selected === next.selected && previous.draggable === next.draggable)
-
-const NetworkStatusNode = memo(function NetworkStatusNode({ marker, map, network, selected }: { marker: MapMarker; map: MapSummary; network: NetworkStatus; selected: boolean }) {
-  const size = Math.max(28, marker.size_ratio * Math.min(map.width_px ?? 0, map.height_px ?? 0)) * (selected ? 1.25 : 1)
-  const tone = networkStatusTone(network)
-  const text = networkStatusText(network)
-  const showText = selected || network.status_ping === 'TIDAK_MERESPONS' || network.status_ping === 'LATENCY_TINGGI'
-  const fontSize = Math.max(10, size * .17)
-  const labelWidth = text.length * fontSize * .56 + 12
-  const onRight = marker.x_ratio < .6
-  const dotX = (onRight ? 1 : -1) * size * .48
-  const labelX = onRight ? size * .66 : -size * .66 - labelWidth
-  return <Group x={marker.x_ratio * (map.width_px ?? 0)} y={marker.y_ratio * (map.height_px ?? 0)}>
-    <Circle x={dotX} y={size * .45} radius={Math.max(5, size * .11)} fill={tone.color} stroke="#fff" strokeWidth={2} shadowBlur={5} shadowOpacity={.25} />
-    {showText && <><Rect x={labelX} y={size * .25} width={labelWidth} height={fontSize + 10} cornerRadius={(fontSize + 10) / 2} fill="rgba(255,255,255,.94)" stroke="rgba(64,84,91,.18)" strokeWidth={1} shadowBlur={5} shadowOpacity={.16} /><Text text={text} x={labelX + 6} y={size * .25 + 5} width={labelWidth - 12} fill="#24363c" fontSize={fontSize} fontStyle="bold" /></>}
-  </Group>
-}, (previous, next) => previous.marker === next.marker && previous.map === next.map && previous.selected === next.selected && previous.network.status_ping === next.network.status_ping && previous.network.latency_ms === next.network.latency_ms && previous.network.diperiksa_pada === next.network.diperiksa_pada)
+}, (previous, next) => previous.marker === next.marker && previous.map === next.map && previous.selected === next.selected && previous.draggable === next.draggable && previous.network?.status_ping === next.network?.status_ping && previous.network?.latency_ms === next.network?.latency_ms)
 
 function StatusScreen({ state, retry }: { state: Exclude<BootstrapState, { status: 'ready' }>; retry: () => void }) {
   const loading = state.status === 'loading'
@@ -600,7 +596,7 @@ function App() {
         <div className="canvas-controls"><button onClick={() => zoom(1 / 1.15)} aria-label="Perkecil peta">−</button><output>{Math.round(view.scale * 100)}%</output><button onClick={() => zoom(1.15)} aria-label="Perbesar peta">+</button><button onClick={() => setView(fitView(viewport, detail?.peta))}>Fit</button></div>
         {detail && <div className="status-legend" aria-label="Warna status penanda"><span><i className="operating" />Beroperasi</span><span><i className="standby" />Standby</span><span><i className="repair" />Perbaikan</span><span><i className="broken" />Rusak</span><span><i className="inactive" />Nonaktif</span></div>}
         {detail && !editing && <div className={`network-legend ${networkState}`} role="status" aria-live="polite" aria-atomic="true"><span><i className="network-online" />Online</span><span><i className="network-warning" />Latency tinggi</span><span><i className="network-down" />Tidak merespons</span><small>{networkState === 'stale' ? 'Pembaruan tertunda' : networkUpdatedAt ? `Diperbarui ${formatNetworkTime(networkUpdatedAt)}` : 'Memuat status jaringan…'}</small></div>}
-        {detail && mapImage.image && <Stage width={viewport.width} height={viewport.height} x={view.x} y={view.y} scaleX={view.scale} scaleY={view.scale} draggable dragBoundFunc={(position) => bounded({ ...position, scale: view.scale })} onDragEnd={(event) => { if (event.target === event.currentTarget) setView(bounded({ x: event.target.x(), y: event.target.y(), scale: view.scale })) }} onWheel={handleWheel} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={() => { pinchRef.current = null }}><Layer listening={false}><KonvaImage image={mapImage.image} width={detail.peta.width_px ?? mapImage.image.naturalWidth} height={detail.peta.height_px ?? mapImage.image.naturalHeight} shadowBlur={18} shadowOpacity={.18} /></Layer><Layer>{filteredMarkers.map((marker) => <MarkerNode key={marker.id} marker={marker} map={detail.peta} selected={marker.id === selectedMarkerId} draggable={editing} onSelect={() => editing ? setSelectedMarkerId(marker.id) : focusMarker(marker)} onMove={(x_ratio, y_ratio) => updateDraftMarker(marker.id, { x_ratio, y_ratio })} />)}</Layer>{!editing && <Layer listening={false}>{filteredMarkers.map((marker) => { const network = networkByEquipment[marker.peralatan.id]; return network ? <NetworkStatusNode key={marker.id} marker={marker} map={detail.peta} network={network} selected={marker.id === selectedMarkerId} /> : null })}</Layer>}</Stage>}
+        {detail && mapImage.image && <Stage width={viewport.width} height={viewport.height} x={view.x} y={view.y} scaleX={view.scale} scaleY={view.scale} draggable dragBoundFunc={(position) => bounded({ ...position, scale: view.scale })} onDragEnd={(event) => { if (event.target === event.currentTarget) setView(bounded({ x: event.target.x(), y: event.target.y(), scale: view.scale })) }} onWheel={handleWheel} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={() => { pinchRef.current = null }}><Layer listening={false}><KonvaImage image={mapImage.image} width={detail.peta.width_px ?? mapImage.image.naturalWidth} height={detail.peta.height_px ?? mapImage.image.naturalHeight} shadowBlur={18} shadowOpacity={.18} /></Layer><Layer>{filteredMarkers.map((marker) => <MarkerNode key={marker.id} marker={marker} map={detail.peta} network={!editing ? networkByEquipment[marker.peralatan.id] : undefined} selected={marker.id === selectedMarkerId} draggable={editing} onSelect={() => editing ? setSelectedMarkerId(marker.id) : focusMarker(marker)} onMove={(x_ratio, y_ratio) => updateDraftMarker(marker.id, { x_ratio, y_ratio })} />)}</Layer></Stage>}
       </div></div>
     </section>
     {showWizard && <MapWizard onClose={() => setShowWizard(false)} onCreated={(id) => { setShowWizard(false); setActiveMapId(id); setMapsRetry((value) => value + 1) }} />}
